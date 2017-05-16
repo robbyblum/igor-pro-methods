@@ -6,14 +6,14 @@
 // --    If you're only doing a 2D experiment, all your waves will look like '**_[*][1]'
 // -- Second, choose your 'FunctionsForPeter' function. If you've got multiple index3D waves, use one of the "Composite**" functions, which will run over your 3D indices.
 // -- Third, to FFT your data, I recommend using "GraphAnyFFTs" or its composite form, choosing your options (note that the 'phasewrapbool' is for centering the F/2 point)
-// -- Finally, use the "waterfall manipulate" macro to manipulate a 3D visualization of 3D data. Pick a base wave name, provide the number of waves in each dimension, and use the 
+// -- Finally, use the "waterfall manipulate" macro to manipulate a 3D visualization of 3D data. Pick a base wave name, provide the number of waves in each dimension, and use the
 // --    "flip indices" option to look at a slice of many 3D waves at a 2D index instead of many 2D waves at a particular 3D index.
 // -------------------
 
 
 // Changed to accommodate 3D naming: Wave_[2Dindex][3Dindex] instead of just Wave_[2Dindex]
 
-// The most basic thing: take the real and imaginary waves from the data and turn them into a series 
+// The most basic thing: take the real and imaginary waves from the data and turn them into a series
 //  of complex waves immediately for processing
 Function MakeComplexWavesForFFT(Name, NI)
 String Name
@@ -46,22 +46,22 @@ Function PlotNutationCurve(Name, pntToTake, NI, timeStart, deltaT,index3D, compl
 	Variable deltaT
 	Variable index3D
 	Variable complexBool
-	
+
 	Make/N=(NI)/D/O PulseTime1b
 	PulseTime1b = timeStart + deltaT*p
-	
+
 	Make/N=(NI)/D/O NutationCurve1b
-	
+
 	variable i = 0
 	Do
 		Duplicate/O $(Name+" real["+num2istr(i+1)+"]["+num2istr(index3D)+"]"), tempWave
 		NutationCurve1b[i] = tempWave[pntToTake]
 		i = i +1
-	While (i<NI)	
-	
+	While (i<NI)
+
 	KillWaves tempWave
 	Duplicate /O NutationCurve1b $"NutationCurve_"+num2str(index3D)
-	
+
 	Display/K=1 $"NutationCurve_"+num2str(index3D) vs PulseTime1b
 End
 
@@ -74,12 +74,12 @@ Function AvgPlotNutationCurve(Name, pntToTake, NI, timeStart, deltaT, numAvgPoin
 	Variable deltaT
 	Variable numAvgPoints
 	Variable index3D
-	
+
 	Make/N=(NI)/D/O PulseTime1b
 	PulseTime1b = timeStart + deltaT*p
-	
+
 	Make/N=(NI)/D/O NutationCurve1b
-	
+
 	variable i = 0
 	Do
 		Duplicate/O $(Name+" real["+num2istr(i+1)+"]["+num2istr(index3D)+"]"), tempWave
@@ -101,16 +101,16 @@ Function AvgPlotNutationCurveFFT(Name, pntToTake, NI, timeStart, deltaT, numAvgP
 	Variable numAvgPointsForward
 	Variable index3D
 	Variable lb
-	
+
 	GraphAnyFFTs(Name+" real", NI, 1, index3D, lb, 0, 0)
-	
+
 	String newName = (Name[0,10] + "FFT")
-	
+
 	Make/N=(NI)/D/O PulseTime1b
 	PulseTime1b = timeStart + deltaT*p
-	
+
 	Make/N=(NI)/D/O NutationCurve1bFFT
-	
+
 	variable i = 0
 	Do
 		Duplicate/O $(newName+"["+num2istr(i+1)+"]["+num2istr(index3D)+"]"), tempWave
@@ -128,7 +128,7 @@ End
 // ==================== //
 //     HAHN ECHO                         //
 // ==================== //
-// written for a sequence: 
+// written for a sequence:
 // (T90) -- (timeStart + p*deltaT) -- (T180) -- (deadTime) -- (observe)
 // with an echo expected at (timeStart + p*deltaT) after the T180, p indexing the indirect dimension.
 // edited below on 4/18/17 to have the echo time at timeStart-deadTime+deltaT*i, incorporating the "dead time" after the T180 pulse.
@@ -148,7 +148,7 @@ Function PlotHahnEchoCurve(Name, NI, timeStart, deltaT, deadTime, T180, index3D,
 	Variable index3D
 	Variable altTimingBool
 
-	
+
 	Make/N=(NI)/D /O EchoTime
 	Make/N=(NI)/D /O RealTime
 	if(altTimingBool)
@@ -158,11 +158,11 @@ Function PlotHahnEchoCurve(Name, NI, timeStart, deltaT, deadTime, T180, index3D,
 		EchoTime = timeStart + deltaT*p - deadTime
 		RealTime = 2*(timeStart + p*deltaT) + T180 + deadTime
 	endif
-		
-	
+
+
 	Make/N=(NI)/D /O HahnEchoCurve
-	Variable startingPoint 
-	
+	Variable startingPoint
+
 	variable i = 0
 	if(altTimingBool)
 		Do
@@ -193,34 +193,34 @@ Function CompositeHahnEchoCurve(Name, NI, NI3D, timeStart, deltaT, deadTime, T18
 	Variable deadTime
 	Variable T180
 	Variable altTimingBool
-	
+
 	Variable frac = floor(65280/(NI3D))
-	
+
 	Variable index3D = 1
 	Do
 		PlotHahnEchoCurve(Name, NI, timeStart, deltaT, deadTime, T180, index3D, altTimingBool)
-		
+
 		Wave HahnEchoCurve, RealTime
-		
+
 		Duplicate/O HahnEchoCurve $"HahnEchoCurve_["+num2str(index3D)+"][1]"
 		Setscale /P x RealTime[0], (RealTime[1]-RealTime[0]), "s", $"HahnEchoCurve_["+num2str(index3D)+"][1]"
-		
+
 		if(index3D==1)
 			Display /K=1 $"HahnEchoCurve_"+num2str(index3D)
 		else
 			AppendToGraph /C = (65280 - index3D*frac, 0, index3D*frac) $"HahnEchoCurve_["+num2str(index3D)+"][1]"
 		endif
-		
+
 		index3D+=1
-	While (index3D<=NI3D)	
+	While (index3D<=NI3D)
 
 End
 
 
-// ===================== // 
+// ===================== //
 //  Hahn Echo - type experiments (values are arrived at incrementally)
-// ===================== // 
-// written for a sequence: 
+// ===================== //
+// written for a sequence:
 // (T90) -- (timeStart + p*deltaT) -- (T180) -- (deadTime) -- (observe)
 // with an echo expected at (timeStart + p*deltaT) after the T180, p indexing the indirect dimension.
 // edited below on 4/18/17 to have the echo time at timeStart-deadTime+deltaT*i, incorporating the "dead time" after the T180 pulse.
@@ -243,7 +243,7 @@ Function PlotIncrementalCurve(Name, NI, timeStart, deltaT, index3D, pntToTake, o
 	RealTime = (timeStart + p*deltaT)
 
 	Make/N=(NI)/D /O/C IncrementCurve
-	
+
 	variable i = 0
 	Do
 		Duplicate/O $(Name+" real["+num2istr(i+1)+"]["+num2istr(index3D)+"]"), tempWaveR
@@ -251,7 +251,7 @@ Function PlotIncrementalCurve(Name, NI, timeStart, deltaT, index3D, pntToTake, o
 		IncrementCurve[i] = cmplx(tempwaveR[pntToTake], tempWaveI[pntToTake])
 		i = i +1
 	While (i<NI)
-	
+
 	SetScale /P x timeStart, deltaT, IncrementCurve
 	Duplicate /O/C IncrementCurve $outputName
 
@@ -269,26 +269,26 @@ End
 //	Variable deadTime
 //	Variable T180
 //	Variable altTimingBool
-//	
+//
 //	Variable frac = floor(65280/(NI3D))
-//	
+//
 //	Variable index3D = 1
 //	Do
 //		PlotHahnEchoCurve(Name, NI, timeStart, deltaT, deadTime, T180, index3D, altTimingBool)
-//		
+//
 //		Wave HahnEchoCurve, RealTime
-//		
+//
 //		Duplicate/O HahnEchoCurve $"HahnEchoCurve_"+num2str(index3D)
 //		Setscale /P x RealTime[0], (RealTime[1]-RealTime[0]), "s", $"HahnEchoCurve_"+num2str(index3D)
-//		
+//
 //		if(index3D==1)
 //			Display /K=1 $"HahnEchoCurve_"+num2str(index3D)
 //		else
 //			AppendToGraph /C = (65280 - index3D*frac, 0, index3D*frac) $"HahnEchoCurve_"+num2str(index3D)
 //		endif
-//		
+//
 //		index3D+=1
-//	While (index3D<=NI3D)	
+//	While (index3D<=NI3D)
 //
 //End
 
@@ -312,20 +312,20 @@ Function PlotCarrPurcellCurve(Name, NI, pntToStart, deltaPnt, tau, t90, acqTime,
 	Variable index3D
 	Variable alternatingBool
 	Variable ComplexBool
-	
+
 	Variable t180 = 2*t90
-	
+
 	Variable timeStart, timeDelta
 	timeStart = (tau - (2/pi)*t180) + t180 + (tau-acqTime/2) + pntToStart*0.000001 // this is if you're acquiring 1 point per 1us.
 	timeDelta = 2*tau + t180
-	
+
 	if(alternatingBool)
 		timeStart = (tau - (2/pi)*t180) + 2*t180 + 2*tau + (tau-acqTime/2) + pntToStart*0.000001 // this is if you're acquiring 1 point per 1us.
 		timeDelta = 4*tau + 2*t180
 	endif
-	
+
 	Variable numLoops=Nan
-	
+
 	if(ComplexBool)
 		Duplicate/O $(Name+" real["+num2istr(j)+"]["+num2istr(index3D)+"]"), tempWaveR
 		Duplicate/O $(Name+" imag["+num2istr(j)+"]["+num2istr(index3D)+"]"), tempWaveI
@@ -341,12 +341,12 @@ Function PlotCarrPurcellCurve(Name, NI, pntToStart, deltaPnt, tau, t90, acqTime,
 		CarrPurcellCurveReal = mean(tempWave,pnt2x(tempwaveR,pntToStart+deltaPnt*p-1),pnt2x(tempwaveR,pntToStart+deltaPnt*p+1))
 		Duplicate /O CarrPurcellCurveReal CarrPurcellCurve
 	endif
-	
+
 	Make/N=(numLoops)/D/O CPEchoTime
 	CPEchoTime[] = timeStart + p*timeDelta
-	
+
 	KillWaves tempWaveR, tempWaveI
-	
+
 //	Display/K=1 CarrPurcellCurve vs CPEchoTime
 End
 
@@ -363,14 +363,14 @@ Function CompositeCPCurve(Name, NI, pntToStart, deltaPnt, tau, t90, tauDelta, ac
 	Variable index3D
 	Variable alternatingBool // are we only acquiring after 2 periods of tc, or one?
 	Variable ComplexBool
-	
+
 	Variable t180 = 2*t90
 	Variable timeStart, timeDelta, tau_i
 
 	Variable i = 0
-	Do	
+	Do
 		tau_i = tau+i*tauDelta
-		
+
 		if(alternatingBool)
 			timeStart = (tau_i - (2/pi)*t180) + 2*t180 + 2*tau_i + (tau_i-acqTime/2) + pntToStart*0.000001 // this is if you're acquiring 1 point per 1us.
 			timeDelta = 4*tau_i + 2*t180
@@ -404,11 +404,11 @@ Function Composite3DCPCurve(Name, NI, pntToStart, deltaPnt, tau, t90, tauDelta, 
 	Variable ComplexBool
 
 	Variable index3D = 1
-	Do	
-		
+	Do
+
 		CompositeCPCurve(Name, NI, pntToStart, deltaPnt, tau, t90, tauDelta, acqTime, index3D, alternatingBool, ComplexBool)
 		tau += tauDelta3D
-		
+
 		index3D+=1
 	While(index3D<=Nindex3D)
 End
@@ -509,17 +509,17 @@ Function PlotQuadraticEchoCurve(Name, Ni, pntToStart, deltaPnt, t90,tau,nEchoes,
 	Variable nEchoes
 	Variable Complex
 	Variable index3D
-	
+
 	Variable t180=2*t90
-	
+
 	Make/N=(nEchoes)/D/O QEEchoTime
 	Variable timeCycle = 2*t180 + 4*tau
 	Variable timeDelta = 2*timeCycle + 2*t90 + (2*timeCycle)/2
 	Variable timeStart = timeDelta
 	print timeDelta, timeStart
-	
+
 	QEEchoTime[] = timeStart + p*timeDelta
-	
+
 	if(Complex)
 		Make/N=(nEchoes)/D/O/C QWaveComplex
 		Duplicate/O $(Name+" real["+num2istr(Ni)+"]["+num2istr(index3D)+"]"), tempWaveR
@@ -534,9 +534,9 @@ Function PlotQuadraticEchoCurve(Name, Ni, pntToStart, deltaPnt, t90,tau,nEchoes,
 		Duplicate /O QWaveReal QuadraticEchoCurve
 		KillWaves tempWave, QWaveReal
 	endif
-	
+
 	SetScale /P x timeStart, timeDelta, "s", QuadraticEchoCurve
-	
+
 //	Display/K=1 QuadraticEchoCurve vs QEEchoTime
 End
 
@@ -552,7 +552,7 @@ Function CompositeQECurves(Name,NI,pntToStart,deltaPnt,t90,tau,deltaTau,nEchoes,
 	Variable nEchoes
 	Variable Complex
 	Variable index3D
-	
+
 	Variable t180=2*t90
 	Variable tc = 2*t180 + 4*tau
 
@@ -563,7 +563,7 @@ Function CompositeQECurves(Name,NI,pntToStart,deltaPnt,t90,tau,deltaTau,nEchoes,
 		Display/K=1 $"QuadraticEchoCurve_["+num2str(i)+"]["+num2istr(index3D)+"]" vs QEEchoTime
 		i+=1
 	While(i<=NI)
-	
+
 End
 
 
@@ -580,7 +580,7 @@ Function PlotSaturationRecovery(Name, timeWave, pntNum, NI,index3D)
 
 
 Make/N=(NI)/D/O SatRecovd
-	
+
 	variable i = 0
 	Do
 		Duplicate/O $(Name+"["+num2istr(i+1)+"]["+num2istr(index3D)+"]"), tempWave
@@ -589,7 +589,7 @@ Make/N=(NI)/D/O SatRecovd
 	While (i<NI)
 	KillWaves tempWave
 	Display/K=1 SatRecovd vs timeWave
-	
+
 End
 
 
@@ -599,7 +599,7 @@ Function AvgPlotSaturationRecovery(Name, timeWave, pntNum, NI,NavgPoints,index3D
 	Wave timeWave
 
 	Make/N=(NI)/D/O SatRecovd
-	
+
 	variable i = 0
 	Do
 		Duplicate/O $(Name+"["+num2istr(i+1)+"]["+num2istr(index3D)+"]"), tempWave
@@ -609,13 +609,13 @@ Function AvgPlotSaturationRecovery(Name, timeWave, pntNum, NI,NavgPoints,index3D
 	While (i<NI)
 	KillWaves tempWave
 //	Display/K=1 SatRecovd vs timeWave
-	
+
 End
 
 
 
 // ==================== //  ==================== //  ==================== //  ==================== //
-//       FOURIER TRANSFORMS                         
+//       FOURIER TRANSFORMS
 // ==================== //  ==================== //  ==================== //  ==================== //
 
 
@@ -623,45 +623,45 @@ Function GraphFFTs(Name, NI,index3D)
 	String Name
 	variable NI
 	variable index3D
-	
+
 	Duplicate/O $(Name+ " real[1]["+num2istr(index3D)+"]"), tempWave
 	variable SW_h = 1/DimDelta(tempwave,0)
 	KillWaves tempWave
-	
-	variable padfactor = 0 //# by which you want to pad by (eg. 6 if you want to zero-fill by 
+
+	variable padfactor = 0 //# by which you want to pad by (eg. 6 if you want to zero-fill by
 	variable lb = 50 //line-broadening factor, if you need to smooth out noise
 	variable ph0 = 0 //usually keep this at 0 unless you think you did initial phasing wrong
 	variable startingIndex = 1  //only change this if you want to only do FT within certain range of 2D waves
 	variable endingIndex = NI   //only change this if you want to only do FT within certain range of 2D waves
-	
+
 	FFTofRealTimeData(Name, startingIndex, SW_h,padfactor, lb, ph0,index3D)
 	String baseWaveName = (Name[0,10] + "FFT")
 	Display $(baseWaveName+"["+num2istr(startingIndex)+"]") //Displays first graph with default red color
-	
+
 	variable traceIndex = 0
 	variable j=(startingIndex + 1)
 	variable i = 1;
 	variable frac = floor(65280/(endingIndex - startingIndex +1))
 
 	do //This goes through the waves to graph giving them gradually bluer coloring
-	
+
 	If (j>endingIndex)
 		break;
 	endif
-	
+
 	Duplicate/O $(Name+ " real["+num2str(j)+"]["+num2istr(index3D)+"]"), tempWave
 	SW_h = 1/DimDelta(tempwave,0)
 	KillWaves tempWave
-	
+
 	FFTofRealTimeData(Name, j, SW_h, padfactor, lb, ph0,index3D)
 
 	AppendToGraph /C = (65280 - i*frac, 0, i*frac), $(baseWaveName+"["+num2istr(j)+"]["+num2istr(index3D)+"]")
-	
+
 	traceIndex +=1
 	i+=1
 	j+=1
 	while (1)
-	
+
 	ModifyGraph cmplxMode=1 //only shows the real part
 
 End
@@ -678,46 +678,46 @@ Function FFTofRealTimeData(Name, imageNum, SW_h, padfactor, lb, ph0,index3D)
 	Duplicate/O $(Name +" real["+num2istr(imageNum)+"]["+num2istr(index3D)+"]"), tempWaveReal
 	Duplicate/O $(Name +" imag["+num2istr(imageNum)+"]["+num2istr(index3D)+"]"), tempWaveImag
 	Variable TotalPnts=numpnts(tempWaveReal)  // Get the number of points right from the real acq time wave
-	Variable deltaT = 1/SW_h	
-	
+	Variable deltaT = 1/SW_h
+
 	Make/C/N=(TotalPnts)/D/O SparseCmplxActualTime
-	SetScale/P x 0,deltaT,"s", SparseCmplxActualTime 
+	SetScale/P x 0,deltaT,"s", SparseCmplxActualTime
 	SparseCmplxActualTime = cmplx(tempWaveReal, tempWaveImag)
 
 	//adding here the capability to artificially zero data from the right if there is a non-integer padfactor, (ex. padfactor = 6.5, will artificially zero half of real data from the right and then pad with padfactor 6)
 	//"remainder" is 10*(fraction of data to artificially zero)
 	Variable remainder = 10*(padfactor - floor(padfactor))
-	
+
 	if (remainder != 0)   //if remainder is not equal to zero, will artifically zero the correct fraction of data from the right
 		Duplicate/O SparseCmplxActualTime, SparseCmplxActualTimeZeroed
-		
+
 		InsertPoints round(TotalPnts - TotalPnts*remainder/10), round(TotalPnts*remainder/10), SparseCmplxActualTimeZeroed
-		
-		DeletePoints TotalPnts, round(TotalPnts*remainder/10), SparseCmplxActualTimeZeroed 
-		
+
+		DeletePoints TotalPnts, round(TotalPnts*remainder/10), SparseCmplxActualTimeZeroed
+
 		Duplicate/O SparseCmplxActualTimeZeroed, SparseCmplxActualPlusTime
 	else
 		Duplicate/O SparseCmplxActualTime, SparseCmplxActualPlusTime
 	endif
 
 	InsertPoints  TotalPnts, (floor(padfactor)*TotalPnts), SparseCmplxActualPlusTime
-	
+
 	Duplicate/O/C SparseCmplxActualPlusTime, SparseCmplxExpActualPlusTime
-	
+
 	variable apod = lb/((2/pi)*(ln(2)))
-	
+
 	SparseCmplxExpActualPlusTime=(exp(-((x*apod)^2))) * SparseCmplxActualPlusTime
-	
+
 	SparseCmplxExpActualPlusTime[0]/=2  //this divides the first 't=0' point by 2, which Kenny MacLean figured out years ago was important for getting the baseline right on the FFT
-	
+
 	FFT/OUT=1/DEST=SparseExpActualPlusTime_FFT SparseCmplxExpActualPlusTime
-	
+
 	Duplicate/O/C  SparseExpActualPlusTime_FFT, SparseExpPh0ActualPlusTime_FFT
-	
+
 	SparseExpPh0ActualPlusTime_FFT=exp(-(cmplx(0,((ph0*Pi)/180))))*SparseExpActualPlusTime_FFT
 
 	Duplicate/O/C  SparseExpPh0ActualPlusTime_FFT, $(Name[0,10] +"FFT"+"["+num2istr(imageNum)+"]["+num2istr(index3D)+"]")
-	
+
 	KillWaves SparseCmplxActualTime
 End
 
@@ -728,12 +728,12 @@ Function PlotFTNutationCurve(Name, pntToTake, NI, timeStart, deltaT,index3D)
 	Variable timeStart
 	Variable deltaT
 	Variable index3D
-	
+
 	Make/N=(NI)/D/O PulseTime2b
 	PulseTime2b = timeStart + deltaT*p
-	
+
 	Make/N=(NI)/D/O NutationCurve2b
-	
+
 	variable i = 0
 	Do
 		Duplicate/O $(Name+"["+num2istr(i+1)+"]["+num2istr(index3D)+"]"), tempWave
@@ -756,7 +756,7 @@ Function PrepareForWaterfallPlot(Name, NI,index3D)
 
 	Make /C/N=(dimsize(tempDimWave,0),NI) Waterfall2D
 	SetScale /P x dimoffset(tempDimWave,0), dimdelta(tempDimWave,0), "Hz", Waterfall2D
-	
+
 	Variable i=0
 	Do
 		Duplicate /O/C $(Name+"["+num2istr(i+1)+"]["+num2istr(index3D)+"]"), tempwave
@@ -769,18 +769,18 @@ Function PrepareForWaterfallPlot(Name, NI,index3D)
 	// make the plot pretty
 	Make /O/N=(dimsize(Waterfall2D,1)) WaterfallColor
 	WaterfallColor=p
-	
+
 	NewWaterfall /HIDE=3 $(Name+"2D")
 	ModifyGraph mode=0, zColor($(Name+"2D"))={WaterfallColor,*,*,Rainbow,0}, cmplxMode=1
 	ModifyWaterfall angle=70, axlen=0.5
-	
+
 	KillWaves Waterfall2D
 
 End
 
 
 // ==================== //  ==================== //  ==================== //  ==================== //
-//       ADAPTIBLE FOURIER TRANSFORMS                         
+//       ADAPTIBLE FOURIER TRANSFORMS
 // ==================== //  ==================== //  ==================== //  ==================== //
 
 Function CompositeGraphAnyFFTs(Name, NI, NI3D, Complex,lb,phaseWrapBool, plotBool)
@@ -790,7 +790,7 @@ Function CompositeGraphAnyFFTs(Name, NI, NI3D, Complex,lb,phaseWrapBool, plotBoo
 	Variable lb
 	Variable phaseWrapBool
 	Variable plotBool
-	
+
 	Variable index3D = 1
 	Do
 		GraphAnyFFTs(Name, NI, Complex,index3D,lb,phaseWrapBool, plotBool)
@@ -807,17 +807,17 @@ Function GraphAnyFFTs(Name, NI, Complex,index3D,lb,phaseWrapBool, plotBool)
 	Variable lb
 	Variable phaseWrapBool
 	Variable plotBool
-	
+
 	Duplicate/O $(Name+"[1]["+num2str(index3D)+"]"), tempWave
 	variable SW_h = 1/DimDelta(tempwave,0)
 	KillWaves tempWave
-	
-	variable padfactor = 0 //# by which you want to pad by (eg. 6 if you want to zero-fill by 
+
+	variable padfactor = 0 //# by which you want to pad by (eg. 6 if you want to zero-fill by
 	// variable lb = 2 //line-broadening factor, if you need to smooth out noise
 	variable ph0 = 0 //usually keep this at 0 unless you think you did initial phasing wrong
 	variable startingIndex = 1  //only change this if you want to only do FT within certain range of 2D waves
 	variable endingIndex = NI   //only change this if you want to only do FT within certain range of 2D waves
-	
+
 
 	if(Complex)
 		FFTofAnyComplexTimeData(Name+"[1]["+num2istr(index3D)+"]", startingIndex, SW_h,padfactor, lb, ph0,index3D,phaseWrapBool)
@@ -825,28 +825,28 @@ Function GraphAnyFFTs(Name, NI, Complex,index3D,lb,phaseWrapBool, plotBool)
 		FFTofAnyRealTimeData(Name+"[1]["+num2istr(index3D)+"]", startingIndex, SW_h,padfactor, lb, ph0,index3D,phaseWrapBool)
 	endif
 
-	
+
 	String baseWaveName = (Name[0,10] + "FFT")
-	
+
 	if(plotBool)
 		Display/K=1 $(baseWaveName+"["+num2istr(startingIndex)+"]["+num2istr(index3D)+"]") //Displays first graph with default red color
 	endif
-	
+
 	variable traceIndex = 0
 	variable j=(startingIndex + 1)
 	variable i = 1;
 	variable frac = floor(65280/(endingIndex - startingIndex +1))
 
 	do //This goes through the waves to graph giving them gradually bluer coloring
-	
+
 	If (j>endingIndex)
 		break;
 	endif
-	
+
 	Duplicate/O $(Name+ "["+num2str(j)+"]["+num2istr(index3D)+"]"), tempWave
 	SW_h = 1/DimDelta(tempwave,0)
 	KillWaves tempWave
-	
+
 	if(Complex)
 		FFTofAnyComplexTimeData(Name+"["+num2str(j)+"]["+num2istr(index3D)+"]", j, SW_h, padfactor, lb, ph0,index3D,phaseWrapBool)
 	else
@@ -856,12 +856,12 @@ Function GraphAnyFFTs(Name, NI, Complex,index3D,lb,phaseWrapBool, plotBool)
 	if(plotBool)
 		AppendToGraph /C = (65280 - i*frac, 0, i*frac), $(baseWaveName+"["+num2istr(j)+"]["+num2istr(index3D)+"]")
 	endif
-	
+
 	traceIndex +=1
 	i+=1
 	j+=1
 	while (1)
-	
+
 	if(plotBool)
 		ModifyGraph cmplxMode=1 //only shows the real part
 	endif
@@ -881,50 +881,50 @@ Function FFTofAnyRealTimeData(Name, imageNum, SW_h, padfactor, lb, ph0,index3D,p
 	Duplicate/O $(Name), tempWaveReal, tempWaveImag
 	tempWaveImag=0
 	Variable TotalPnts=numpnts(tempWaveReal)  // Get the number of points right from the real acq time wave
-	Variable deltaT = 1/SW_h	
-	
+	Variable deltaT = 1/SW_h
+
 	Make/C/N=(TotalPnts)/D/O SparseCmplxActualTime
-	SetScale/P x 0,deltaT,"s", SparseCmplxActualTime 
+	SetScale/P x 0,deltaT,"s", SparseCmplxActualTime
 	SparseCmplxActualTime = cmplx(tempWaveReal,tempWaveImag)
 
 	//adding here the capability to artificially zero data from the right if there is a non-integer padfactor, (ex. padfactor = 6.5, will artificially zero half of real data from the right and then pad with padfactor 6)
 	//"remainder" is 10*(fraction of data to artificially zero)
 	Variable remainder = 10*(padfactor - floor(padfactor))
-	
+
 	if (remainder != 0)   //if remainder is not equal to zero, will artifically zero the correct fraction of data from the right
 		Duplicate/O SparseCmplxActualTime, SparseCmplxActualTimeZeroed
-		
+
 		InsertPoints round(TotalPnts - TotalPnts*remainder/10), round(TotalPnts*remainder/10), SparseCmplxActualTimeZeroed
-		
-		DeletePoints TotalPnts, round(TotalPnts*remainder/10), SparseCmplxActualTimeZeroed 
-		
+
+		DeletePoints TotalPnts, round(TotalPnts*remainder/10), SparseCmplxActualTimeZeroed
+
 		Duplicate/O SparseCmplxActualTimeZeroed, SparseCmplxActualPlusTime
 	else
 		Duplicate/O SparseCmplxActualTime, SparseCmplxActualPlusTime
 	endif
 
 	InsertPoints  TotalPnts, (floor(padfactor)*TotalPnts), SparseCmplxActualPlusTime
-	
+
 	Duplicate/O/C SparseCmplxActualPlusTime, SparseCmplxExpActualPlusTime
-	
+
 	variable apod = lb/((2/pi)*(ln(2)))
-	
+
 	SparseCmplxExpActualPlusTime=(exp(-((x*apod)^2))) * SparseCmplxActualPlusTime
-	
+
 	SparseCmplxExpActualPlusTime[0]/=2  //this divides the first 't=0' point by 2, which Kenny MacLean figured out years ago was important for getting the baseline right on the FFT
-	
+
 	if(phaseWrapBool)
 		FFT/Z/OUT=1/DEST=SparseExpActualPlusTime_FFT SparseCmplxExpActualPlusTime
 	else
 		FFT/OUT=1/DEST=SparseExpActualPlusTime_FFT SparseCmplxExpActualPlusTime
 	endif
-	
+
 	Duplicate/O/C  SparseExpActualPlusTime_FFT, SparseExpPh0ActualPlusTime_FFT
-	
+
 	SparseExpPh0ActualPlusTime_FFT=exp(-(cmplx(0,((ph0*Pi)/180))))*SparseExpActualPlusTime_FFT
 
 	Duplicate/O/C  SparseExpPh0ActualPlusTime_FFT, $(Name[0,10] +"FFT"+"["+num2istr(imageNum)+"]["+num2istr(index3D)+"]")
-	
+
 	KillWaves SparseCmplxActualTime
 End
 
@@ -942,52 +942,49 @@ Function FFTofAnyComplexTimeData(Name, imageNum, SW_h, padfactor, lb, ph0,index3
 
 	Duplicate/O $(Name), tempWave
 	Variable TotalPnts=numpnts(tempWave)  // Get the number of points right from the real acq time wave
-	Variable deltaT = 1/SW_h	
-	
+	Variable deltaT = 1/SW_h
+
 	Make/C/N=(TotalPnts)/D/O SparseCmplxActualTime
-	SetScale/P x 0,deltaT,"s", SparseCmplxActualTime 
+	SetScale/P x 0,deltaT,"s", SparseCmplxActualTime
 	SparseCmplxActualTime = tempWave
 
 	//adding here the capability to artificially zero data from the right if there is a non-integer padfactor, (ex. padfactor = 6.5, will artificially zero half of real data from the right and then pad with padfactor 6)
 	//"remainder" is 10*(fraction of data to artificially zero)
 	Variable remainder = 10*(padfactor - floor(padfactor))
-	
+
 	if (remainder != 0)   //if remainder is not equal to zero, will artifically zero the correct fraction of data from the right
 		Duplicate/O SparseCmplxActualTime, SparseCmplxActualTimeZeroed
-		
+
 		InsertPoints round(TotalPnts - TotalPnts*remainder/10), round(TotalPnts*remainder/10), SparseCmplxActualTimeZeroed
-		
-		DeletePoints TotalPnts, round(TotalPnts*remainder/10), SparseCmplxActualTimeZeroed 
-		
+
+		DeletePoints TotalPnts, round(TotalPnts*remainder/10), SparseCmplxActualTimeZeroed
+
 		Duplicate/O SparseCmplxActualTimeZeroed, SparseCmplxActualPlusTime
 	else
 		Duplicate/O SparseCmplxActualTime, SparseCmplxActualPlusTime
 	endif
 
 	InsertPoints  TotalPnts, (floor(padfactor)*TotalPnts), SparseCmplxActualPlusTime
-	
+
 	Duplicate/O/C SparseCmplxActualPlusTime, SparseCmplxExpActualPlusTime
-	
+
 	variable apod = lb/((2/pi)*(ln(2)))
-	
+
 	SparseCmplxExpActualPlusTime=(exp(-((x*apod)^2))) * SparseCmplxActualPlusTime
-	
+
 	SparseCmplxExpActualPlusTime[0]/=2  //this divides the first 't=0' point by 2, which Kenny MacLean figured out years ago was important for getting the baseline right on the FFT
-	
+
 	if(phaseWrapBool)
 		FFT/Z/OUT=1/DEST=SparseExpActualPlusTime_FFT SparseCmplxExpActualPlusTime
 	else
 		FFT/OUT=1/DEST=SparseExpActualPlusTime_FFT SparseCmplxExpActualPlusTime
 	endif
-	
+
 	Duplicate/O/C  SparseExpActualPlusTime_FFT, SparseExpPh0ActualPlusTime_FFT
-	
+
 	SparseExpPh0ActualPlusTime_FFT=exp(-(cmplx(0,((ph0*Pi)/180))))*SparseExpActualPlusTime_FFT
 
 	Duplicate/O/C  SparseExpPh0ActualPlusTime_FFT, $(Name[0,10] +"FFT"+"["+num2istr(imageNum)+"]["+num2istr(index3D)+"]")
-	
+
 	KillWaves SparseCmplxActualTime
 End
-
-
-
