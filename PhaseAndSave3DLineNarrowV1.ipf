@@ -19,7 +19,7 @@
 
 
 
-Proc PhaseCtrl(ctrlName): ButtonControl					//This button activates the checked boxes and calculates the magnitude
+Function PhaseCtrl(ctrlName): ButtonControl					//This button activates the checked boxes and calculates the magnitude
 	String ctrlName
 	Variable/G phase0, smoothbool, scalebool, baselinebool, offsetreal, offsetimag, notphased, smoothfactor
 	PauseUpdate
