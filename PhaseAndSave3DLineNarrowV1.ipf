@@ -546,6 +546,10 @@ Function Open_File_source(ctrlName): ButtonControl
 		source_wave_real[0,(source_numpnts - 1)] = source_wave_realmaster(x)
 		source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x)
 
+		// "mag wave x scaling" fix: remake magnitude wave here, with correct scaling (and correct y data)
+		Duplicate /O source_wave_real, source_wave_mag
+		source_wave_mag = Sqrt(source_wave_real^2 + source_wave_imag^2)
+
 		AppendToGraph source_wave_real
 		AppendToGraph source_wave_imag
 		ModifyGraph rgb(source_wave_imag)=(0,52224,0)
@@ -1166,7 +1170,7 @@ Function FourierTransform()																	//This is a straightforward FFT, wit
 		InsertPoints (temptotalsteps),(tempsteps), ftsource_wave_mag
 	endif
 
-	duplicate/o ftsource_wave_real, trial1
+	duplicate/O ftsource_wave_real, trial1
 
 	if(usecursors == 0)
 		GetAxis/Q bottom
@@ -1179,7 +1183,7 @@ Function FourierTransform()																	//This is a straightforward FFT, wit
 	step = deltax(ftsource_wave_real)
 	start = leftx(ftsource_wave_real)
 
-	make/o/C ftsource_wave_cmplx												//make a complex wave with the same dimensions and make it the complex signal
+	make/O/C ftsource_wave_cmplx												//make a complex wave with the same dimensions and make it the complex signal
 	Redimension/N = (points) ftsource_wave_cmplx									// wave
 	SetScale/P x (start),(step),"s", ftsource_wave_cmplx
 
@@ -1212,7 +1216,7 @@ Function FourierTransform()																	//This is a straightforward FFT, wit
 	phaseone = 0																		//initialize the phase one corrections to zero
 	phaseoneus = 0
 
-	duplicate/o ftsource_wave_mag, phaseonewave									//make a wave whose entries are 2*pi*v where v is the frequency independent variableof the FFT
+	Duplicate/O ftsource_wave_mag, phaseonewave									//make a wave whose entries are 2*pi*v where v is the frequency independent variableof the FFT
 	phaseonewave = 2*pi*x
 
 	finepft=0																				//initialize the phase corrections to zero
@@ -1343,7 +1347,7 @@ Function GaussApodFourierTransform(apod)															//This an FFT, with gauss
 	phaseone = 0																		//initialize the phase one corrections to zero
 	phaseoneus = 0
 
-	duplicate/o ftsource_wave_mag, phaseonewave									//make a wave whose entries are 2*pi*v where v is the frequency independent variableof the FFT
+	duplicate/O ftsource_wave_mag, phaseonewave									//make a wave whose entries are 2*pi*v where v is the frequency independent variableof the FFT
 	phaseonewave = 2*pi*x
 
 	finepft=0																				//initialize the phase corrections to zero
@@ -1446,7 +1450,7 @@ Function ExpApodFourierTransform(apod)
 	start = leftx(ftsource_wave_real)
 
 
-	make/o/C ftsource_wave_cmplx												//make a complex wave with the same dimensions and make it the complex signal
+	make/O/C ftsource_wave_cmplx												//make a complex wave with the same dimensions and make it the complex signal
 	Redimension/N = (points) ftsource_wave_cmplx								//wave
 	SetScale/P x (start),(step),"s", ftsource_wave_cmplx
 
@@ -1479,7 +1483,7 @@ Function ExpApodFourierTransform(apod)
 	phaseone = 0																		//initialize the phase one corrections to zero
 	phaseoneus = 0
 
-	duplicate/o ftsource_wave_mag, phaseonewave									//make a wave whose entries are 2*pi*v where v is the frequency independent variableof the FFT
+	duplicate/O ftsource_wave_mag, phaseonewave									//make a wave whose entries are 2*pi*v where v is the frequency independent variableof the FFT
 	phaseonewave = 2*pi*x
 
 	finepft=0																				//initialize the phase corrections to zero
