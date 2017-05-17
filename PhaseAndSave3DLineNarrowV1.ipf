@@ -19,11 +19,13 @@
 
 
 
-Proc PhaseCtrl(ctrlName): ButtonControl					//This button activates the checked boxes and calculates the magnitude
+Function PhaseCtrl(ctrlName): ButtonControl					//This button activates the checked boxes and calculates the magnitude
 	String ctrlName
 	Variable/G phase0, smoothbool, scalebool, baselinebool, offsetreal, offsetimag, notphased, smoothfactor
-	PauseUpdate
+	//PauseUpdate
 
+	Wave Ph0of2Dtnt, source_wave_real, source_wave_imag
+	NVAR Fileselect, filenumber, Fileselect3D
 	//Get rid of dependencies on first phasing
 	SetFormula source_wave_real, ""
 	SetFormula source_wave_imag, ""
@@ -41,8 +43,10 @@ Proc PhaseCtrl(ctrlName): ButtonControl					//This button activates the checked 
 											// so use this last saved Ph0 num for this wave as the 'current, Ph0 value'
 	endif
 
-	source_wave_real := realref * cos(phase0) + imagref * sin(phase0)		//Real part under rotation angle "phase0"
-	source_wave_imag := imagref * cos(phase0) - realref * sin(phase0)			//Imaginary part under rotation angle "phase0"
+	//source_wave_real := realref * cos(phase0) + imagref * sin(phase0)		//Real part under rotation angle "phase0"
+	SetFormula source_wave_real, "realref * cos(phase0) + imagref * sin(phase0)"
+	//source_wave_imag := imagref * cos(phase0) - realref * sin(phase0)			//Imaginary part under rotation angle "phase0"
+	SetFormula source_wave_imag, "imagref * cos(phase0) - realref * sin(phase0)"
 
 	source_wave_mag = Sqrt(source_wave_real^2 + source_wave_imag^2)			//Magnitude (This needs to be updated after smoothing)
 		RemovefromGraph/Z source_wave_mag
@@ -51,7 +55,7 @@ Proc PhaseCtrl(ctrlName): ButtonControl					//This button activates the checked 
 		ModifyGraph rgb(source_wave_mag)=(0,0,65280)
 
 
-	ResumeUpdate
+	//ResumeUpdate
 End
 
 
