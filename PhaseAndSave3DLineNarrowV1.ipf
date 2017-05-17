@@ -838,8 +838,8 @@ Window SaveThisData() : Graph
 	CheckBox magcheckbox,pos={3,115},size={37,14},proc=magar,title="mag",value= 1
 	PopupMenu FFTwave,pos={969,8},size={149,20},proc=PopupFFT,title="FFT[\\{fileselect}]"
 	PopupMenu FFTwave,mode=1,popvalue="No Apodization",value= #"\"No GB/LB;Gaussian;Exponential\""
-	SetVariable setvar0,pos={4,54},size={81,15},bodyWidth=36,title="Scans 1D"
-	SetVariable setvar0,value= source_nscans
+	ValDisplay setvar0,pos={4,54},size={81,15},bodyWidth=36,title="Scans 1D"
+	ValDisplay setvar0,value= #"source_nscans"
 	ValDisplay valdisp0,pos={155,9},size={90,14},title="Select File #"
 	ValDisplay valdisp0,limits={0,0,0},barmisc={0,1000},value= #"fileselect"
 	ValDisplay valdisp1,pos={160,29},size={85,14},title="Total Files"
