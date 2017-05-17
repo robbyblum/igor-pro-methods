@@ -1075,10 +1075,10 @@ Function PopupFFT(ctrlName,popNum,popStr) : PopupMenuControl												//This f
 		Execute "FourierTransform()"
 	endif
 	If (popNum==2)
-		Execute "GaussApodFourierTransform()"
+		Execute "GaussApodFourierTransform(1)"	// default apod 1 Hz
 	endif
 	If (popNum==3)
-		Execute "ExpApodFourierTransform()"
+		Execute "ExpApodFourierTransform(1)"		// default apod 1 Hz
 	endif
 End
 
@@ -1235,9 +1235,10 @@ Function GaussApodFourierTransform(apod)															//This an FFT, with gauss
 	NVAR fileselect, zerofillbool, usecursors
 	Variable/G ftfileselect = fileselect
 
-	prompt apod, "Enter the Gaussian FWHM in Hz"
-	apod = ((2/pi)*(ln(2)))/apod
-	apod = 1/apod
+	Prompt apod, "Enter the Gaussian FWHM in Hz"
+	DoPrompt "Apodization Factor", apod
+	apod = ((2/pi)*(ln(2)))/apod	// convert from FWHM to variance, I think
+	apod = 1/apod						// convert back to Hz, I think??
 	Silent 1
 
 	variable checka																		//we check first whether or not the two cursors are on the screen
@@ -1366,8 +1367,9 @@ Function ExpApodFourierTransform(apod)
 	variable/G ftfileselect = fileselect
 
 	Prompt apod, "Enter the Lorentzian FWHM in Hz"
-	apod = 1/(pi*apod)
-	apod = 1/apod
+	DoPrompt "Apodization Factor", apod
+	apod = 1/(pi*apod)	// convert from FWHM to time constant
+	apod = 1/apod			// convert from time constant to rate constant
 	Silent 1
 
 	GetAxis/Q Bottom
