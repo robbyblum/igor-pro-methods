@@ -16,7 +16,7 @@
 // Added opening 3D experiments - JDR 01/2017
 
 
-
+//test change for a test commit
 
 
 Function PhaseCtrl(ctrlName): ButtonControl					//This button activates the checked boxes and calculates the magnitude
