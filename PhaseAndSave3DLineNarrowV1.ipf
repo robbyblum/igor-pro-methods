@@ -939,12 +939,12 @@ End
 
 Window FFTGraph() : Graph																					////This is the FFT window
 	PauseUpdate; Silent 1		// building window...
-	Execute "Display /W=(37.5,79.25,678,516.5)  ftsource_wave_real,ftsource_wave_imag,ftsource_wave_mag"
+	Display /W=(38,79,768,517)  ftsource_wave_real,ftsource_wave_imag,ftsource_wave_mag
 	ModifyGraph lSize=1
 	ModifyGraph grid=1
 	ModifyGraph gridRGB=(56576,56576,56576)
-	Execute "ModifyGraph rgb(ftsource_wave_imag)=(0,52224,0)"
-	Execute "ModifyGraph rgb(ftsource_wave_mag)=(0,0,65280)"
+	ModifyGraph rgb(ftsource_wave_imag)=(0,52224,0)
+	ModifyGraph rgb(ftsource_wave_mag)=(0,0,65280)
 	ControlBar 50
 	SetVariable cphase,pos={49,24},size={65,19},title="Coarse",fSize=12,frame=0									//fine and course phase adjustments
 	SetVariable cphase,limits={-Inf,Inf,0.05},value=coursepFT
@@ -955,7 +955,7 @@ Window FFTGraph() : Graph																					////This is the FFT window
 	SetDrawLayer UserFront																					//phase correction given by 2*pi*v*t (v is the frequency) is added
 	ValDisplay valdisp2,pos={049,5},size={125,15},title="Phase Angle"
 	ValDisplay valdisp2,limits={0,0,0},barmisc={0,1000},value= phaseFFT											//This is the phase angle display
-	ValDisplay valdisp3,pos={200,5},size={127,15}, title="Phase One Correction (us)", frame = 0
+	ValDisplay valdisp3,pos={200,5},size={127,15},bodyWidth=1, title="Phase One Correction (us)", frame = 0
 	ValDisplay valdisp3,limits={0,0,0},barmisc={0,1000}, value = 0													//This is not actually a display, it is just used as a label for the phase one setvariable
 	ValDisplay valdisp4, pos={625,5}, size={94,15}, title = "File #"
 	ValDisplay valdisp4, limits={0,0,0}, barmisc={0,1000}, value= ftfileselect
