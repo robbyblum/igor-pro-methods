@@ -583,16 +583,19 @@ Function Open_File_source(ctrlName): ButtonControl
 		if ((Abs(source_wave_real[ipntnum])<1e-9)&&(Abs(source_wave_imag[ipntnum])<1e-9))
 			InZeroBool=1
 			iAtEndOfFirstZeroBurst=ipntnum //use this to hold the current Zero value
+			break
 		endif
-		//debugging...worked...no longer needed//Print "ipntnum=", ipntnum,  "Re=", Abs(source_wave_real[ipntnum]), "Im=", Abs(source_wave_imag[ipntnum]), "InZeroBool=", InZeroBool
 		ipntnum+=1
-	While ((((Abs(source_wave_real[ipntnum])<1e-9)&&(Abs(source_wave_imag[ipntnum])<1e-9)) || (InZeroBool==0)) && (ipntnum<source_numpnts))
+	While (ipntnum<source_numpnts)
 
 	if (ipntnum == source_numpnts)
 		iAtEndOfFirstZeroBurst = ipntnum
 	endif
 
-	Variable/G Acq=(iAtEndOfFirstZeroBurst+1), PntToSetPh0=(Acq/2-1)
+	Variable/G Acq=iAtEndOfFirstZeroBurst, PntToSetPh0=floor(Acq/2)
+	if(Acq == source_numpnts)
+		PntToSetPh0 = 1 // if only 1 acq block, put PntToSetPh0 at the second point by default
+	endif
 
 	if (exists(source_file[0,15]+" Ph0"))
 		Duplicate/O $(source_file[0,15]+" Ph0"), Ph0of2Dtnt
