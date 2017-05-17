@@ -648,7 +648,7 @@ Function UpOne(ctrlName): ButtonControl
 End
 
 
-Proc DownOne(ctrlName): ButtonControl
+Function DownOne(ctrlName): ButtonControl
 	String ctrlName
 
 	NVAR Fileselect, filenumber, Fileselect3D, notphased
