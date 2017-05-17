@@ -850,23 +850,23 @@ EndMacro
 
 Window TableOf2DWaveOfPh0AndMag() : Table
 	PauseUpdate; Silent 1		// building window...
-	Edit/W=(1209,97,1436,912) Ph0of2Dtnt.xy,Magof2Dtnt.y as "Recorded Values of Ph0 AND Mag in 2D set"
+	Edit/K=1/W=(1053,45,1280,795) Ph0of2Dtnt.xy,Magof2Dtnt.y as "Recorded Values of Ph0 AND Mag in 2D set"
 	ModifyTable format(Point)=1,width(Point)=22,width(Magof2Dtnt.y)=72,width(Ph0of2Dtnt.x)=42
 	ModifyTable width(Ph0of2Dtnt.d)=72
 EndMacro
 
 
-Window TableOf2DWaveOfPh0() : Table
-	PauseUpdate; Silent 1		// building window...
-	Edit/W=(1309,97,1602,765) Ph0of2Dtnt.xy as "Recorded Values of Ph0 in 2D set"
-	ModifyTable format(Point)=1,width(Point)=42,width(Ph0of2Dtnt.d)=78
-EndMacro
-
-Window TableOf2DWaveOfMag() : Table
-	PauseUpdate; Silent 1		// building window...
-	Edit/W=(1309,97,1602,765) Magof2Dtnt.xy as "Recorded Values of Magnitude in 2D set"
-	ModifyTable format(Point)=1,width(Point)=42,width(Magof2Dtnt.d)=78
-EndMacro
+//Window TableOf2DWaveOfPh0() : Table
+//	PauseUpdate; Silent 1		// building window...
+//	Edit/W=(1309,97,1602,765) Ph0of2Dtnt.xy as "Recorded Values of Ph0 in 2D set"
+//	ModifyTable format(Point)=1,width(Point)=42,width(Ph0of2Dtnt.d)=78
+//EndMacro
+//
+//Window TableOf2DWaveOfMag() : Table
+//	PauseUpdate; Silent 1		// building window...
+//	Edit/W=(1309,97,1602,765) Magof2Dtnt.xy as "Recorded Values of Magnitude in 2D set"
+//	ModifyTable format(Point)=1,width(Point)=42,width(Magof2Dtnt.d)=78
+//EndMacro
 
 
 Function Realar(ctrlName,checked) : CheckBoxControl		//This function will add/remove the real FID from the graph
