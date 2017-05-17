@@ -371,13 +371,18 @@ End
 
 
 
-Proc Bulk_2D_AUTO_FIND_Ph0(ctrlName): ButtonControl          //Use this button to attempt to load the Ph0[i] wave for a 2D set automatically...needs great S/N, and
+Function Bulk_2D_AUTO_FIND_Ph0(ctrlName): ButtonControl          //Use this button to attempt to load the Ph0[i] wave for a 2D set automatically...needs great S/N, and
 	String ctrlName
 
+	NVAR Fileselect, filenumber, Fileselect3D, Phase0, PntToSetPh0, notphased
+	NVAR source_numpnts, masterstepsize, source_numpnts3D
+	Wave Ph0of2Dtnt, Magof2Dtnt, source_wave_real, source_wave_imag, source_wave_mag
+	Wave source_wave_realmaster, source_wave_imagmaster
+
 	//Variable Acq=10, PntToSetPh0=4  // PntToSetPh0=Acq/2-1, the same as the SparseDwell t=0 pnt
-//
-//	Prompt Acq,"Enter Number of Points in each Acq Window"
-//	Prompt PntToSetPh0,"I think the Ph0 should be determined at (Acq/2-1)=PntToSetPh0, the 't=0' sparse point.  Risky to Change!"
+	//
+	//	Prompt Acq,"Enter Number of Points in each Acq Window"
+	//	Prompt PntToSetPh0,"I think the Ph0 should be determined at (Acq/2-1)=PntToSetPh0, the 't=0' sparse point.  Risky to Change!"
 
 											// will step through full 2D wave and use Atan() to find Ph0 value to use
 
@@ -394,71 +399,71 @@ Proc Bulk_2D_AUTO_FIND_Ph0(ctrlName): ButtonControl          //Use this button t
 	String fnamereal, fnameimag, fnamemag  //use this one call here, at the top of the do-while loop, and get rid of calls below, which gave trouble (local string not killed easily)
 
 
-Do // loop 3D, added by JDR 01/2017
+	Do // loop 3D, added by JDR 01/2017
 
-	iFileselect=1
+		iFileselect=1
 
-	Do // loop 2D
+		Do // loop 2D
 
-		//PauseUpdate
+			//PauseUpdate
 
-		CheckBox realcheckbox, value = 1
-		CheckBox imagcheckbox, value = 1
-		CheckBox magcheckbox, value = 1
-
-		//This record hasn't been phased yet
-		notphased=1
-		SetFormula source_wave_real, ""
-		SetFormula source_wave_imag, ""
-		Redimension/N = (source_numpnts) source_wave_real
-		Redimension/N = (source_numpnts) source_wave_imag
-		source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(iFileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // *(iFileselect3D-1) added by JDR 01/2017
-		source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(iFileselect- 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)// *(iFileselect3D-1) added by JDR 01/2017
-		RemoveFromGraph/z source_wave_mag
-			FileSelect=iFileselect  //use this to update the select file num to show which wave is plotted
-			FileSelect3D=iFileselect3D // added by JDR 01/2017
-
-		// the above was from Proc "UpOne"...we use it to load the full, as recorded real & imag for the ifileselect wave slice
-
-		if (notphased)										//Maintain phase0 angle (if you phased it already but want to baseline or smooth etc.)
-			Duplicate/O source_wave_real, realref
-			Duplicate/O source_wave_imag, imagref
-			notphased=0
-		endif
-
-		AutoPh0=atan2(imagref[PntToSetPh0], realref[PntToSetPh0] )
-
-	//	if (numtype(Ph0of2Dtnt[(iFileselect-1)])==2)  //If true, the 2D wave entry for this fileselect is still a Nan...can't use for Ph0!
-	//		//keep the phase0 last used, stored in the global variable
-	//	else
-	//		Phase0=Ph0of2Dtnt[(iFileselect-1)]  //in that case, a real Ph0 num has already been entered, either in program, or by hand
-	//											// so use this last saved Ph0 num for this wave as the 'current, Ph0 value'
-	//	endif
-
-		phase0=+1*AutoPh0  //this looks to be the right convention
-
-		source_wave_real := realref * cos(phase0) + imagref * sin(phase0)		//Real part under rotation angle "phase0"
-		source_wave_imag := imagref * cos(phase0) - realref * sin(phase0)			//Imaginary part under rotation angle "phase0"
-
-		// the displayed real and imag waves should now be phased....get ready to export them below
-
-			source_wave_mag = Sqrt(source_wave_real^2 + source_wave_imag^2)			//Magnitude (Calculated here for display purposes...as a check on ph0 value)
-			RemovefromGraph/Z source_wave_mag
+			CheckBox realcheckbox, value = 1
+			CheckBox imagcheckbox, value = 1
 			CheckBox magcheckbox, value = 1
-			AppendtoGraph source_wave_mag
-			ModifyGraph rgb(source_wave_mag)=(0,0,65280)
-		Beep
-		//report the Ph0 used in history window
-		//debugging, worked, drop// Print "The Ph0 angle used for this slice#", iFileselect, "wave",phase0
-		//Load in 2D wave table
-		Ph0of2Dtnt[(iFileselect-1)+filenumber*(Fileselect3D-1)]=Phase0
-		Magof2Dtnt[(iFileselect-1)+filenumber*(Fileselect3D-1)]=source_wave_mag[PntToSetPh0]  //use the global variable PntToSetPh0, determined in 'open file source' proc, to get proper magnitude point
-	iFileselect+=1
 
-	While (iFileselect<(filenumber+1)) // go back and process the next slice in the 2D wave
+			//This record hasn't been phased yet
+			notphased=1
+			SetFormula source_wave_real, ""
+			SetFormula source_wave_imag, ""
+			Redimension/N = (source_numpnts) source_wave_real
+			Redimension/N = (source_numpnts) source_wave_imag
+			source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(iFileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // *(iFileselect3D-1) added by JDR 01/2017
+			source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(iFileselect- 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)// *(iFileselect3D-1) added by JDR 01/2017
+			RemoveFromGraph/z source_wave_mag
+				FileSelect=iFileselect  //use this to update the select file num to show which wave is plotted
+				FileSelect3D=iFileselect3D // added by JDR 01/2017
 
-iFileselect3D+=1  // added by JDR 01/2017
-While (iFileselect3D<(source_numpnts3D+1)) // added by JDR 01/2017
+			// the above was from Proc "UpOne"...we use it to load the full, as recorded real & imag for the ifileselect wave slice
+
+			if (notphased)										//Maintain phase0 angle (if you phased it already but want to baseline or smooth etc.)
+				Duplicate/O source_wave_real, realref
+				Duplicate/O source_wave_imag, imagref
+				notphased=0
+			endif
+
+			AutoPh0=atan2(imagref[PntToSetPh0], realref[PntToSetPh0] )
+
+		//	if (numtype(Ph0of2Dtnt[(iFileselect-1)])==2)  //If true, the 2D wave entry for this fileselect is still a Nan...can't use for Ph0!
+		//		//keep the phase0 last used, stored in the global variable
+		//	else
+		//		Phase0=Ph0of2Dtnt[(iFileselect-1)]  //in that case, a real Ph0 num has already been entered, either in program, or by hand
+		//											// so use this last saved Ph0 num for this wave as the 'current, Ph0 value'
+		//	endif
+
+			phase0=+1*AutoPh0  //this looks to be the right convention
+
+			SetFormula source_wave_real, "realref * cos(phase0) + imagref * sin(phase0)"		//Real part under rotation angle "phase0"
+			SetFormula source_wave_imag, "imagref * cos(phase0) - realref * sin(phase0)"		//Imaginary part under rotation angle "phase0"
+
+			// the displayed real and imag waves should now be phased....get ready to export them below
+
+				source_wave_mag = Sqrt(source_wave_real^2 + source_wave_imag^2)			//Magnitude (Calculated here for display purposes...as a check on ph0 value)
+				RemovefromGraph/Z source_wave_mag
+				CheckBox magcheckbox, value = 1
+				AppendtoGraph source_wave_mag
+				ModifyGraph rgb(source_wave_mag)=(0,0,65280)
+			Beep
+			//report the Ph0 used in history window
+			//debugging, worked, drop// Print "The Ph0 angle used for this slice#", iFileselect, "wave",phase0
+			//Load in 2D wave table
+			Ph0of2Dtnt[(iFileselect-1)+filenumber*(Fileselect3D-1)]=Phase0
+			Magof2Dtnt[(iFileselect-1)+filenumber*(Fileselect3D-1)]=source_wave_mag[PntToSetPh0]  //use the global variable PntToSetPh0, determined in 'open file source' proc, to get proper magnitude point
+		iFileselect+=1
+
+		While (iFileselect<(filenumber+1)) // go back and process the next slice in the 2D wave
+
+	iFileselect3D+=1  // added by JDR 01/2017
+	While (iFileselect3D<(source_numpnts3D+1)) // added by JDR 01/2017
 
 End
 
@@ -467,10 +472,13 @@ End
 
 
 
-Proc Open_File_source(ctrlName): ButtonControl
+Function Open_File_source(ctrlName): ButtonControl
 	String ctrlName
+
+	NVAR usecursors
+
 	SetDataFolder root:  // In case other macros do something funny
-	PauseUpdate
+	//PauseUpdate
 
 	CheckBox realcheckbox, value = 1
 	CheckBox imagcheckbox, value = 1
@@ -583,7 +591,7 @@ Proc Open_File_source(ctrlName): ButtonControl
 	SetScale/P x 1,1,"", Magof2Dtnt
 	endif
 
-	ResumeUpdate
+	//ResumeUpdate
 	if(usecursors == 1)
 		GetAxis/Q bottom; Cursor A, source_wave_real, V_min; Cursor B, source_wave_real, V_max;
 	endif
@@ -592,10 +600,16 @@ End
 
 
 
-Proc UpOne(ctrlName): ButtonControl
+Function UpOne(ctrlName): ButtonControl
 	String ctrlName
+
+	NVAR Fileselect, filenumber, Fileselect3D, notphased
+	NVAR source_numpnts, masterstepsize, source_numpnts3D
+	Wave source_wave_real, source_wave_imag
+	Wave source_wave_realmaster, source_wave_imagmaster
+
 	SetDataFolder root:  // In case other macros do something funny
-	PauseUpdate
+	//PauseUpdate
 
 	CheckBox realcheckbox, value = 1
 	CheckBox imagcheckbox, value = 1
@@ -636,8 +650,14 @@ End
 
 Proc DownOne(ctrlName): ButtonControl
 	String ctrlName
+
+	NVAR Fileselect, filenumber, Fileselect3D, notphased
+	NVAR source_numpnts, masterstepsize, source_numpnts3D
+	Wave source_wave_real, source_wave_imag
+	Wave source_wave_realmaster, source_wave_imagmaster
+
 	SetDataFolder root:  // In case other macros do something funny
-	PauseUpdate
+	//PauseUpdate
 
 	CheckBox realcheckbox, value = 1
 	CheckBox imagcheckbox, value = 1
@@ -677,10 +697,16 @@ End
 // --
 // UpOne for 3D, added by JDR 01/2017
 // --
-Proc UpOne3D(ctrlName): ButtonControl
+Function UpOne3D(ctrlName): ButtonControl
 	String ctrlName
+
+	NVAR Fileselect, filenumber, Fileselect3D, notphased
+	NVAR source_numpnts, masterstepsize, source_numpnts3D
+	Wave source_wave_real, source_wave_imag
+	Wave source_wave_realmaster, source_wave_imagmaster
+
 	SetDataFolder root:  // In case other macros do something funny
-	PauseUpdate
+	//PauseUpdate
 
 	CheckBox realcheckbox, value = 1
 	CheckBox imagcheckbox, value = 1
@@ -719,10 +745,16 @@ End
 // --
 // DownOne for 3D, added by JDR 01/2017
 // --
-Proc DownOne3D(ctrlName): ButtonControl
+Function DownOne3D(ctrlName): ButtonControl
 	String ctrlName
+
+	NVAR Fileselect, filenumber, Fileselect3D, notphased
+	NVAR source_numpnts, masterstepsize, source_numpnts3D
+	Wave source_wave_real, source_wave_imag
+	Wave source_wave_realmaster, source_wave_imagmaster
+
 	SetDataFolder root:  // In case other macros do something funny
-	PauseUpdate
+	//PauseUpdate
 
 	CheckBox realcheckbox, value = 1
 	CheckBox imagcheckbox, value = 1
