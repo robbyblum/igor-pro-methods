@@ -19,11 +19,13 @@
 
 
 
-Proc PhaseCtrl(ctrlName): ButtonControl					//This button activates the checked boxes and calculates the magnitude
+Function PhaseCtrl(ctrlName): ButtonControl					//This button activates the checked boxes and calculates the magnitude
 	String ctrlName
 	Variable/G phase0, smoothbool, scalebool, baselinebool, offsetreal, offsetimag, notphased, smoothfactor
-	PauseUpdate
+	//PauseUpdate
 
+	Wave Ph0of2Dtnt, source_wave_real, source_wave_imag
+	NVAR Fileselect, filenumber, Fileselect3D
 	//Get rid of dependencies on first phasing
 	SetFormula source_wave_real, ""
 	SetFormula source_wave_imag, ""
@@ -41,8 +43,10 @@ Proc PhaseCtrl(ctrlName): ButtonControl					//This button activates the checked 
 											// so use this last saved Ph0 num for this wave as the 'current, Ph0 value'
 	endif
 
-	source_wave_real := realref * cos(phase0) + imagref * sin(phase0)		//Real part under rotation angle "phase0"
-	source_wave_imag := imagref * cos(phase0) - realref * sin(phase0)			//Imaginary part under rotation angle "phase0"
+	//source_wave_real := realref * cos(phase0) + imagref * sin(phase0)		//Real part under rotation angle "phase0"
+	SetFormula source_wave_real, "realref * cos(phase0) + imagref * sin(phase0)"
+	//source_wave_imag := imagref * cos(phase0) - realref * sin(phase0)			//Imaginary part under rotation angle "phase0"
+	SetFormula source_wave_imag, "imagref * cos(phase0) - realref * sin(phase0)"
 
 	source_wave_mag = Sqrt(source_wave_real^2 + source_wave_imag^2)			//Magnitude (This needs to be updated after smoothing)
 		RemovefromGraph/Z source_wave_mag
@@ -51,15 +55,17 @@ Proc PhaseCtrl(ctrlName): ButtonControl					//This button activates the checked 
 		ModifyGraph rgb(source_wave_mag)=(0,0,65280)
 
 
-	ResumeUpdate
+	//ResumeUpdate
 End
 
 
-Proc Record_Ph0_in_2D(ctrlName): ButtonControl  //This button will make sure that a table appears next to the window, and the 2D wave
+Function Record_Ph0_in_2D(ctrlName): ButtonControl  //This button will make sure that a table appears next to the window, and the 2D wave
 	String ctrlName									//storing the right Ph0 for each slice of 2D.tnt will be displayed as the button is pressed to record it
 														//as well as the magnitude of the second point of the slice
 
-	PauseUpdate
+	Wave Ph0of2Dtnt, Magof2Dtnt, source_wave_real, source_wave_imag, source_wave_mag
+	NVAR Fileselect, filenumber, Fileselect3D, Phase0, PntToSetPh0
+	//PauseUpdate
 
 	Ph0of2Dtnt[(Fileselect-1)+filenumber*(Fileselect3D-1)]=Phase0  // (fileselect3D-1) added by JDR 01/2017
 	Magof2Dtnt[(Fileselect-1)+filenumber*(Fileselect3D-1)]=source_wave_mag[PntToSetPh0]  //use the global variable PntToSetPh0, determined in 'open file source' proc, to get proper magnitude point. (fileselect3D) added by JDR 01/2017
@@ -67,29 +73,20 @@ Proc Record_Ph0_in_2D(ctrlName): ButtonControl  //This button will make sure tha
 
 	DoWindow/F TableOf2DWaveOfPh0AndMag	//Bring the table window to the front (so we don't make a million copies)
 	If (V_flag<1)			//Build Window if it doesn't already exist
-		TableOf2DWaveOfPh0AndMag()
+		Execute "TableOf2DWaveOfPh0AndMag()"
 	endif
-
-// BELOW IS FROM V4...combine two into one table up above
-//	DoWindow/F TableOf2DWaveOfPh0		//Bring the table window to the front (so we don't make a million copies)
-//	If (V_flag<1)			//Build Window if it doesn't already exist
-//		TableOf2DWaveOfPh0()
-//	endif
-//
-//	DoWindow/F TableOf2DWaveOfMag		//Bring the table window to the front (so we don't make a million copies)
-//	If (V_flag<1)			//Build Window if it doesn't already exist
-//		TableOf2DWaveOfMag()
-//	endif
 
 	DoWindow/F SaveThisData		//Bring the window to the front (so we don't make a million copies)
 
-	ResumeUpdate
+	//ResumeUpdate
 
 End
 
 
-Proc Close_Window(ctrlName): ButtonControl
+Function Close_Window(ctrlName): ButtonControl
 	String ctrlName
+
+	SVAR source_file
 	//saving phase and magnitude information in a wave with name showing the file with which it belongs
 	Duplicate/O Magof2Dtnt, $(source_file[0,15]+" Mag")
 	Print "Wave '"+source_file[0,15]+" Mag" +"' was generated in root."
@@ -97,10 +94,8 @@ Proc Close_Window(ctrlName): ButtonControl
 	Print "Wave '"+source_file[0,15]+" Ph0" +"' was generated in root."
 	//killing things
 	DoWindow/K SaveThisData
-	//DoWindow/K TableOf2DWaveOfPh0
-	//DoWindow/K TableOf2DWaveOfMag  //no longer used as of V5
 	DoWindow/K TableOf2DWaveOfPh0AndMag
-	KillWaves/Z source_wave_real, source_wave_imag, source_wave_mag, realref, imagref,
+	KillWaves/Z source_wave_real, source_wave_imag, source_wave_mag, realref, imagref
 	KillWaves/Z source_wave_0, source_wave_1, source_wave_realmaster, source_wave_imagmaster
 	KillWaves/Z tempsource_wave_real, tempsource_wave_imag, tempsource_wave_mag, ftsource_wave_cmplx, phaseonewave
 	KillVariables/Z leftmin, leftmax, bottommin, bottommax
@@ -109,13 +104,20 @@ Proc Close_Window(ctrlName): ButtonControl
 	KillVariables/Z filenumber, fileselect, masterstepsize, offsetreal, offsetimag
 	KillVariables/Z source_numpnts3D, filenumber3D // added by JDR 01/2017
 	KillVariables/Z gatetime, spacertime, acqtime, preacq, firstacq
+	KillVariables/Z gLiveUpdate // addd by RLB 2017/05/17
 	KillStrings/Z fnamereal, fnameimag, fnamemag
 End
 
-Proc Save_Waves_source(ctrlName): ButtonControl          //Export the waves shown on screen
+Function Save_Waves_source(ctrlName): ButtonControl          //Export the waves shown on screen
 	String ctrlName
+
+	NVAR Fileselect, filenumber, Fileselect3D, Phase0, PntToSetPh0, iFileselect, iFileselect3D
+	SVAR source_file
+
 	SetDataFolder root:  // In case other macros do something funny
 	GetAxis/Q bottom
+
+
 
 	//if(filenumber == 1) //changing v6 to let us process 1 2D point
 	if(filenumber == 0) //if this is only < 1D experiment, don't bother writing file#1 as part of the exported wave's name
@@ -189,13 +191,20 @@ Proc Save_Waves_source(ctrlName): ButtonControl          //Export the waves show
 End
 
 
-Proc Bulk_2D_Ph0_Save_Waves_source(ctrlName): ButtonControl          //After the full Ph0[i] wave has been loaded,
+Function Bulk_2D_Ph0_Save_Waves_source(ctrlName): ButtonControl          //After the full Ph0[i] wave has been loaded,
 	String ctrlName													// use this to step through full 2D wave and export the full-length phased real&imag waves
 
+	SVAR source_file
+	NVAR Fileselect, filenumber, Fileselect3D, Phase0, PntToSetPh0, notphased
+	NVAR source_numpnts, masterstepsize, source_numpnts3D
+	NVAR gLiveUpdate
+	Wave Ph0of2Dtnt, Magof2Dtnt, source_wave_real, source_wave_imag, source_wave_mag
+	Wave source_wave_realmaster, source_wave_imagmaster
+
 	//saving phase and magnitude information in a wave with name showing the file with which it belongs
-	Execute "Duplicate/O Magof2Dtnt, $(source_file[0,15]+\" Mag\")"
+	Duplicate/O Magof2Dtnt, $(source_file[0,15]+" Mag")
 	print "Wave '"+ source_file[0,15] + " Mag"+"' was generated in root."
-	Execute "Duplicate/O Ph0of2Dtnt, $(source_file[0,15]+\" Ph0\")"
+	Duplicate/O Ph0of2Dtnt, $(source_file[0,15]+" Ph0")
 	print "Wave '"+ source_file[0,15] + " Ph0"+"' was generated in root."
 
 	SetDataFolder root:  // In case other macros do something funny
@@ -209,173 +218,182 @@ Proc Bulk_2D_Ph0_Save_Waves_source(ctrlName): ButtonControl          //After the
 
 	String fnamereal, fnameimag, fnamemag  //use this one call here, at the top of the do-while loop, and get rid of calls below, which gave trouble (local string not killed easily)
 
-Do // loop through 3D
 
-iFileselect=1 // added by JDR 01/2017
+	//first save the zoomed-in axis settings...will restore after export
+	GetAxis/Q left
+	Variable/G leftmax = V_max
+	Variable/G leftmin = V_min
+	GetAxis/Q bottom
+	Variable/G bottommax = V_max
+	Variable/G bottommin = V_min
 
-	Do // loop through 2D
+	Do // loop through 3D
 
-		//PauseUpdate
+	iFileselect=1 // added by JDR 01/2017
 
-		CheckBox realcheckbox, value = 1
-		CheckBox imagcheckbox, value = 1
-		CheckBox magcheckbox, value = 1
+		Do // loop through 2D
 
-		//This record hasn't been phased yet
-		notphased=1
-		SetFormula source_wave_real, ""
-		SetFormula source_wave_imag, ""
-		Redimension/N = (source_numpnts) source_wave_real
-		Redimension/N = (source_numpnts) source_wave_imag
-		source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(iFileselect - 1)*source_numpnts + masterstepsize*(iFileselect3D-1)*source_numpnts*filenumber)
-		source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(iFileselect- 1)*source_numpnts + masterstepsize*(iFileselect3D-1)*source_numpnts*filenumber)
-		RemoveFromGraph/z source_wave_mag
-			FileSelect=iFileselect  //use this to update the select file num to show which wave is plotted
-			FileSelect3D=iFileselect3D // added by JDR 01/2017
+			//PauseUpdate
 
-		// the above was from Proc "UpOne"...we use it to load the full, as recorded real & imag for the ifileselect wave slice
-
-		if (notphased)										//Maintain phase0 angle (if you phased it already but want to baseline or smooth etc.)
-			Duplicate/O source_wave_real, realref
-			Duplicate/O source_wave_imag, imagref
-			notphased=0
-		endif
-
-		if (numtype(Ph0of2Dtnt[(iFileselect-1)+filenumber*(Fileselect3D-1)])==2)  //If true, the 2D wave entry for this fileselect is still a Nan...can't use for Ph0!
-			//keep the phase0 last used, stored in the global variable
-		else
-			Phase0=Ph0of2Dtnt[(iFileselect-1)+filenumber*(Fileselect3D-1)]  //in that case, a real Ph0 num has already been entered, either in program, or by hand
-												// so use this last saved Ph0 num for this wave as the 'current, Ph0 value'
-		endif
-
-		source_wave_real := realref * cos(phase0) + imagref * sin(phase0)		//Real part under rotation angle "phase0"
-		source_wave_imag := imagref * cos(phase0) - realref * sin(phase0)			//Imaginary part under rotation angle "phase0"
-
-		// the displayed real and imag waves should now be phased....get ready to export them below
-
-		//first save the zoomed-in axis settings...will restore after export
-		GetAxis/Q left
-		Variable/G leftmax = V_max
-		Variable/G leftmin = V_min
-		GetAxis/Q bottom
-		Variable/G bottommax = V_max
-		Variable/G bottommin = V_min
-		//now use autoscale to show the full wave slice to be exported
-		SetAxis/A
-		GetAxis/Q bottom; Cursor A, source_wave_real, V_min; Cursor B, source_wave_real, V_max;
-
-
-
-		// below comes from the Proc "Save_waves_source"
-		//if(filenumber == 1) //if this is only a 1D experiment, don't bother writing file#1 as part of the exported wave's name
-		if(filenumber == 0)
-			if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_real*"))
-				KillStrings/Z fnamereal, fnameimag, fnamemag
-
-				 fnamereal=source_file[0,15]+"real"
-				Cursor A, source_wave_real, V_min; Cursor B, source_wave_real, V_max;
-				Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) source_wave_real, '" + fnamereal+"'"
-				Execute "'"+fnamereal+"'=source_wave_real(x)"
-				print "Wave '"+fnamereal+"' was generated in  root."
-			endif
-			if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_imag*"))
-				 fnameimag=source_file[0,15]+"imag"
-				Cursor A, source_wave_imag, V_min; Cursor B, source_wave_imag, V_max;
-				Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) source_wave_imag, '" + fnameimag+"'"
-				Execute "'"+fnameimag+"'=source_wave_imag(x)"
-				print "Wave '"+fnameimag+"' was generated in  root."
-			endif
-			if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_mag*"))
-				 fnamemag=source_file[0,15]+"mag"
-				Cursor A, source_wave_mag, V_min; Cursor B, source_wave_mag, V_max;
-				Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) source_wave_mag, '" + fnamemag+"'"
-				Execute "'"+fnamemag+"'=source_wave_mag(x)"
-				print "Wave '"+fnamemag+"' was generated in  root."
-			endif
-//		elseif(source_numpnts3D==1)  // changed condition for "2D, not 3D" added by JDR 01/2017
-//			if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_real*"))
-//				 fnamereal=source_file[0,15]+" real["+num2str(iFileselect) +"]"
-//				Cursor A, source_wave_real, V_min; Cursor B, source_wave_real, V_max;
-//				Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) source_wave_real, '" + fnamereal+"'"
-//				Execute "'"+fnamereal+"'=source_wave_real(x)"
-//				print "Wave '"+fnamereal+"' was generated in  root."
-//			endif
-//			if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_imag*"))
-//				 fnameimag=source_file[0,15]+" imag[" + num2str(iFileselect) +"]"
-//				Cursor A, source_wave_imag, V_min; Cursor B, source_wave_imag, V_max;
-//				Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) source_wave_imag, '" + fnameimag+"'"
-//				Execute "'"+fnameimag+"'=source_wave_imag(x)"
-//				print "Wave '"+fnameimag+"' was generated in  root."
-//			endif
-//			if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_mag*"))
-//				 fnamemag=source_file[0,15]+" mag[" + num2str(iFileselect)	 +"]"
-//				Cursor A, source_wave_mag, V_min; Cursor B, source_wave_mag, V_max;
-//				Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) source_wave_mag, '" + fnamemag+"'"
-//				Execute "'"+fnamemag+"'=source_wave_mag(x)"
-//				print "Wave '"+fnamemag+"' was generated in  root."
-//			endif
-		else   // whole section for 3D added by JDR 01/2017
-			if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_real*"))
-				 fnamereal=source_file[0,15]+" real["+num2str(iFileselect) +"]["+num2str(iFileselect3D)+"]"
-				Cursor A, source_wave_real, V_min; Cursor B, source_wave_real, V_max;
-				Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) source_wave_real, '" + fnamereal+"'"
-				Execute "'"+fnamereal+"'=source_wave_real(x)"
-				print "Wave '"+fnamereal+"' was generated in  root."
-			endif
-			if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_imag*"))
-				 fnameimag=source_file[0,15]+" imag[" + num2str(iFileselect) +"]["+num2str(iFileselect3D)+"]"
-				Cursor A, source_wave_imag, V_min; Cursor B, source_wave_imag, V_max;
-				Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) source_wave_imag, '" + fnameimag+"'"
-				Execute "'"+fnameimag+"'=source_wave_imag(x)"
-				print "Wave '"+fnameimag+"' was generated in  root."
-			endif
-			if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_mag*"))
-				 fnamemag=source_file[0,15]+" mag[" + num2str(iFileselect)	 +"]["+num2str(iFileselect3D)+"]"
-				Cursor A, source_wave_mag, V_min; Cursor B, source_wave_mag, V_max;
-				Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) source_wave_mag, '" + fnamemag+"'"
-				Execute "'"+fnamemag+"'=source_wave_mag(x)"
-				print "Wave '"+fnamemag+"' was generated in  root."
-			endif
-		endif
-
-		//Now, restore zoomed-in view of wave for user
-		If (Exists("leftmin")*Exists("leftmax")*Exists("bottommin")*Exists("Bottommax"))
-			SetAxis left, leftmin, leftmax
-			SetAxis bottom, bottommin, bottommax
-		else
-			SetAxis/A
-		endif
-			source_wave_mag = Sqrt(source_wave_real^2 + source_wave_imag^2)			//Magnitude (Calculated here for display purposes...as a check on ph0 value)
-			RemovefromGraph/Z source_wave_mag
+			CheckBox realcheckbox, value = 1
+			CheckBox imagcheckbox, value = 1
 			CheckBox magcheckbox, value = 1
-			AppendtoGraph source_wave_mag
-			ModifyGraph rgb(source_wave_mag)=(0,0,65280)
-		//report the Ph0 used in history window
-		Print "The Ph0 angle used for this wave was",phase0
-	iFileselect+=1
 
-	While (iFileselect<(filenumber+1)) // go back and process the next slice in the 2D wave
+			//This record hasn't been phased yet
+			notphased=1
+			SetFormula source_wave_real, ""
+			SetFormula source_wave_imag, ""
+			Redimension/N = (source_numpnts) source_wave_real
+			Redimension/N = (source_numpnts) source_wave_imag
+			source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(iFileselect - 1)*source_numpnts + masterstepsize*(iFileselect3D-1)*source_numpnts*filenumber)
+			source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(iFileselect- 1)*source_numpnts + masterstepsize*(iFileselect3D-1)*source_numpnts*filenumber)
+			RemoveFromGraph/z source_wave_mag
+				FileSelect=iFileselect  //use this to update the select file num to show which wave is plotted
+				FileSelect3D=iFileselect3D // added by JDR 01/2017
 
-iFileselect3D+=1   // added by JDR 01/2017
-While(iFileselect3D<(source_numpnts3D+1))   // added by JDR 01/2017
+			// the above was from Proc "UpOne"...we use it to load the full, as recorded real & imag for the ifileselect wave slice
 
+			if (notphased)										//Maintain phase0 angle (if you phased it already but want to baseline or smooth etc.)
+				Duplicate/O source_wave_real, realref
+				Duplicate/O source_wave_imag, imagref
+				notphased=0
+			endif
+
+			if (numtype(Ph0of2Dtnt[(iFileselect-1)+filenumber*(Fileselect3D-1)])==2)  //If true, the 2D wave entry for this fileselect is still a Nan...can't use for Ph0!
+				//keep the phase0 last used, stored in the global variable
+			else
+				Phase0=Ph0of2Dtnt[(iFileselect-1)+filenumber*(Fileselect3D-1)]  //in that case, a real Ph0 num has already been entered, either in program, or by hand
+													// so use this last saved Ph0 num for this wave as the 'current, Ph0 value'
+			endif
+
+			SetFormula source_wave_real, "realref * cos(phase0) + imagref * sin(phase0)"		//Real part under rotation angle "phase0"
+			SetFormula source_wave_imag, "imagref * cos(phase0) - realref * sin(phase0)"		//Imaginary part under rotation angle "phase0"
+
+			// the displayed real and imag waves should now be phased....get ready to export them below
+
+			//use autoscale to show the full wave slice to be exported (if live update is enabled)
+			SetAxis/A
+			//GetAxis/Q bottom; Cursor A, source_wave_real, V_min; Cursor B, source_wave_real, V_max;
+
+
+			// below comes from the Proc "Save_waves_source"
+			// RLB 2017-05-17: Since this is designed to "export the full-length phased real&imag waves",
+			// we don't need to mess around with cursors and custom ranges at all. We also don't need to mess
+			// around with changing the view, but I'm going to keep that in for now. I might move it outside the loop, though.
+
+			//if(filenumber == 1) //if this is only a 1D experiment, don't bother writing file#1 as part of the exported wave's name
+			if(filenumber == 0)
+				if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_real*"))
+					KillStrings/Z fnamereal, fnameimag, fnamemag
+
+					fnamereal=source_file[0,15]+"real"
+					Execute "Duplicate/O source_wave_real, '" + fnamereal+"'"
+					Execute "'"+fnamereal+"'=source_wave_real(x)"
+					print "Wave '"+fnamereal+"' was generated in  root."
+				endif
+				if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_imag*"))
+					fnameimag=source_file[0,15]+"imag"
+					Execute "Duplicate/O source_wave_imag, '" + fnameimag+"'"
+					Execute "'"+fnameimag+"'=source_wave_imag(x)"
+					print "Wave '"+fnameimag+"' was generated in  root."
+				endif
+				if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_mag*"))
+					fnamemag=source_file[0,15]+"mag"
+					Execute "Duplicate/O source_wave_mag, '" + fnamemag+"'"
+					Execute "'"+fnamemag+"'=source_wave_mag(x)"
+					print "Wave '"+fnamemag+"' was generated in  root."
+				endif
+//			elseif(source_numpnts3D==1)  // changed condition for "2D, not 3D" added by JDR 01/2017
+//				if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_real*"))
+//					fnamereal=source_file[0,15]+" real["+num2str(iFileselect) +"]"
+//					Cursor A, source_wave_real, V_min; Cursor B, source_wave_real, V_max;
+//					Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) source_wave_real, '" + fnamereal+"'"
+//					Execute "'"+fnamereal+"'=source_wave_real(x)"
+//					print "Wave '"+fnamereal+"' was generated in  root."
+//				endif
+//				if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_imag*"))
+//					fnameimag=source_file[0,15]+" imag[" + num2str(iFileselect) +"]"
+//					Cursor A, source_wave_imag, V_min; Cursor B, source_wave_imag, V_max;
+//					Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) source_wave_imag, '" + fnameimag+"'"
+//					Execute "'"+fnameimag+"'=source_wave_imag(x)"
+//					print "Wave '"+fnameimag+"' was generated in  root."
+//				endif
+//				if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_mag*"))
+//					fnamemag=source_file[0,15]+" mag[" + num2str(iFileselect)	 +"]"
+//					Cursor A, source_wave_mag, V_min; Cursor B, source_wave_mag, V_max;
+//					Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) source_wave_mag, '" + fnamemag+"'"
+//					Execute "'"+fnamemag+"'=source_wave_mag(x)"
+//					print "Wave '"+fnamemag+"' was generated in  root."
+//				endif
+			else   // whole section for 3D added by JDR 01/2017
+				if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_real*"))
+					fnamereal=source_file[0,15]+" real["+num2str(iFileselect) +"]["+num2str(iFileselect3D)+"]"
+					Execute "Duplicate/O source_wave_real, '" + fnamereal+"'"
+					Execute "'"+fnamereal+"'=source_wave_real(x)"
+					print "Wave '"+fnamereal+"' was generated in  root."
+				endif
+				if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_imag*"))
+					fnameimag=source_file[0,15]+" imag[" + num2str(iFileselect) +"]["+num2str(iFileselect3D)+"]"
+					Execute "Duplicate/O source_wave_imag, '" + fnameimag+"'"
+					Execute "'"+fnameimag+"'=source_wave_imag(x)"
+					print "Wave '"+fnameimag+"' was generated in  root."
+				endif
+				if (StringMatch(WaveList("*", ",", "WIN:"),"*source_wave_mag*"))
+					fnamemag=source_file[0,15]+" mag[" + num2str(iFileselect)	 +"]["+num2str(iFileselect3D)+"]"
+					Execute "Duplicate/O source_wave_mag, '" + fnamemag+"'"
+					Execute "'"+fnamemag+"'=source_wave_mag(x)"
+					print "Wave '"+fnamemag+"' was generated in  root."
+				endif
+			endif
+
+			//report the Ph0 used in history window
+			Print "The Ph0 angle used for this wave was",phase0
+
+			if(gLiveUpdate)
+				DoUpdate
+			endif
+			iFileselect+=1
+
+		While (iFileselect<(filenumber+1)) // go back and process the next slice in the 2D wave
+
+		iFileselect3D+=1   // added by JDR 01/2017
+	While(iFileselect3D<(source_numpnts3D+1))   // added by JDR 01/2017
+
+
+	//Now, restore zoomed-in view of wave for user
+	If (Exists("leftmin")*Exists("leftmax")*Exists("bottommin")*Exists("Bottommax"))
+		SetAxis left, leftmin, leftmax
+		SetAxis bottom, bottommin, bottommax
+	else
+		SetAxis/A
+	endif
+		source_wave_mag = Sqrt(source_wave_real^2 + source_wave_imag^2)			//Magnitude (Calculated here for display purposes...as a check on ph0 value)
+		RemovefromGraph/Z source_wave_mag
+		CheckBox magcheckbox, value = 1
+		AppendtoGraph source_wave_mag
+		ModifyGraph rgb(source_wave_mag)=(0,0,65280)
 End
 
 
 
 
-Proc Bulk_2D_AUTO_FIND_Ph0(ctrlName): ButtonControl          //Use this button to attempt to load the Ph0[i] wave for a 2D set automatically...needs great S/N, and
+Function Bulk_2D_AUTO_FIND_Ph0(ctrlName): ButtonControl          //Use this button to attempt to load the Ph0[i] wave for a 2D set automatically...needs great S/N, and
 	String ctrlName
 
+	NVAR Fileselect, filenumber, Fileselect3D, Phase0, PntToSetPh0, notphased
+	NVAR source_numpnts, masterstepsize, source_numpnts3D
+	NVAR gLiveUpdate
+	Wave Ph0of2Dtnt, Magof2Dtnt, source_wave_real, source_wave_imag, source_wave_mag
+	Wave source_wave_realmaster, source_wave_imagmaster
+
 	//Variable Acq=10, PntToSetPh0=4  // PntToSetPh0=Acq/2-1, the same as the SparseDwell t=0 pnt
-//
-//	Prompt Acq,"Enter Number of Points in each Acq Window"
-//	Prompt PntToSetPh0,"I think the Ph0 should be determined at (Acq/2-1)=PntToSetPh0, the 't=0' sparse point.  Risky to Change!"
+	//
+	//	Prompt Acq,"Enter Number of Points in each Acq Window"
+	//	Prompt PntToSetPh0,"I think the Ph0 should be determined at (Acq/2-1)=PntToSetPh0, the 't=0' sparse point.  Risky to Change!"
 
 											// will step through full 2D wave and use Atan() to find Ph0 value to use
 
 	SetDataFolder root:  // In case other macros do something funny
-	GetAxis/Q bottom  //makes any axis queries 'quiet', so they don't print in history
 
 	// The following Proc is a hybrid of a slightly modified 'upone', then the phasing step of phasecontrol, then the exporting step of save waves
 	//  All of this is in a do-while loop that steps from 1 to filenum
@@ -387,71 +405,76 @@ Proc Bulk_2D_AUTO_FIND_Ph0(ctrlName): ButtonControl          //Use this button t
 	String fnamereal, fnameimag, fnamemag  //use this one call here, at the top of the do-while loop, and get rid of calls below, which gave trouble (local string not killed easily)
 
 
-Do // loop 3D, added by JDR 01/2017
+	Do // loop 3D, added by JDR 01/2017
 
-	iFileselect=1
+		iFileselect=1
 
-	Do // loop 2D
+		Do // loop 2D
 
-		//PauseUpdate
+			CheckBox realcheckbox, value = 1
+			CheckBox imagcheckbox, value = 1
+			CheckBox magcheckbox, value = 1
 
-		CheckBox realcheckbox, value = 1
-		CheckBox imagcheckbox, value = 1
-		CheckBox magcheckbox, value = 1
-
-		//This record hasn't been phased yet
-		notphased=1
-		SetFormula source_wave_real, ""
-		SetFormula source_wave_imag, ""
-		Redimension/N = (source_numpnts) source_wave_real
-		Redimension/N = (source_numpnts) source_wave_imag
-		source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(iFileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // *(iFileselect3D-1) added by JDR 01/2017
-		source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(iFileselect- 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)// *(iFileselect3D-1) added by JDR 01/2017
-		RemoveFromGraph/z source_wave_mag
+			//This record hasn't been phased yet
+			notphased=1
+			SetFormula source_wave_real, ""
+			SetFormula source_wave_imag, ""
+			Redimension/N = (source_numpnts) source_wave_real
+			Redimension/N = (source_numpnts) source_wave_imag
+			source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(iFileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // *(iFileselect3D-1) added by JDR 01/2017
+			source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(iFileselect- 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)// *(iFileselect3D-1) added by JDR 01/2017
+			RemoveFromGraph/z source_wave_mag
 			FileSelect=iFileselect  //use this to update the select file num to show which wave is plotted
 			FileSelect3D=iFileselect3D // added by JDR 01/2017
 
-		// the above was from Proc "UpOne"...we use it to load the full, as recorded real & imag for the ifileselect wave slice
+			// the above was from Proc "UpOne"...we use it to load the full, as recorded real & imag for the ifileselect wave slice
 
-		if (notphased)										//Maintain phase0 angle (if you phased it already but want to baseline or smooth etc.)
-			Duplicate/O source_wave_real, realref
-			Duplicate/O source_wave_imag, imagref
-			notphased=0
-		endif
+			if (notphased)										//Maintain phase0 angle (if you phased it already but want to baseline or smooth etc.)
+				Duplicate/O source_wave_real, realref
+				Duplicate/O source_wave_imag, imagref
+				notphased=0
+			endif
 
-		AutoPh0=atan2(imagref[PntToSetPh0], realref[PntToSetPh0] )
+			AutoPh0=atan2(imagref[PntToSetPh0], realref[PntToSetPh0] )
 
-	//	if (numtype(Ph0of2Dtnt[(iFileselect-1)])==2)  //If true, the 2D wave entry for this fileselect is still a Nan...can't use for Ph0!
-	//		//keep the phase0 last used, stored in the global variable
-	//	else
-	//		Phase0=Ph0of2Dtnt[(iFileselect-1)]  //in that case, a real Ph0 num has already been entered, either in program, or by hand
-	//											// so use this last saved Ph0 num for this wave as the 'current, Ph0 value'
-	//	endif
+			phase0=+1*AutoPh0  //this looks to be the right convention
 
-		phase0=+1*AutoPh0  //this looks to be the right convention
+			SetFormula source_wave_real, "realref * cos(phase0) + imagref * sin(phase0)"		//Real part under rotation angle "phase0"
+			SetFormula source_wave_imag, "imagref * cos(phase0) - realref * sin(phase0)"		//Imaginary part under rotation angle "phase0"
 
-		source_wave_real := realref * cos(phase0) + imagref * sin(phase0)		//Real part under rotation angle "phase0"
-		source_wave_imag := imagref * cos(phase0) - realref * sin(phase0)			//Imaginary part under rotation angle "phase0"
-
-		// the displayed real and imag waves should now be phased....get ready to export them below
+			// the displayed real and imag waves should now be phased....get ready to export them below
 
 			source_wave_mag = Sqrt(source_wave_real^2 + source_wave_imag^2)			//Magnitude (Calculated here for display purposes...as a check on ph0 value)
 			RemovefromGraph/Z source_wave_mag
 			CheckBox magcheckbox, value = 1
 			AppendtoGraph source_wave_mag
 			ModifyGraph rgb(source_wave_mag)=(0,0,65280)
-		Beep
-		//report the Ph0 used in history window
-		//debugging, worked, drop// Print "The Ph0 angle used for this slice#", iFileselect, "wave",phase0
-		//Load in 2D wave table
-		Ph0of2Dtnt[(iFileselect-1)+filenumber*(Fileselect3D-1)]=Phase0
-		Magof2Dtnt[(iFileselect-1)+filenumber*(Fileselect3D-1)]=source_wave_mag[PntToSetPh0]  //use the global variable PntToSetPh0, determined in 'open file source' proc, to get proper magnitude point
-	iFileselect+=1
 
-	While (iFileselect<(filenumber+1)) // go back and process the next slice in the 2D wave
+			//Beep //RLB 2017/05/17: no beep
 
-iFileselect3D+=1  // added by JDR 01/2017
-While (iFileselect3D<(source_numpnts3D+1)) // added by JDR 01/2017
+			if(gLiveUpdate)
+				DoUpdate
+			endif
+
+			//Load in 2D wave table
+			Ph0of2Dtnt[(iFileselect-1)+filenumber*(Fileselect3D-1)]=Phase0
+			Magof2Dtnt[(iFileselect-1)+filenumber*(Fileselect3D-1)]=source_wave_mag[PntToSetPh0]  //use the global variable PntToSetPh0, determined in 'open file source' proc, to get proper magnitude point
+			iFileselect+=1
+
+		While (iFileselect<(filenumber+1)) // go back and process the next slice in the 2D wave
+
+		iFileselect3D+=1  // added by JDR 01/2017
+	While (iFileselect3D<(source_numpnts3D+1)) // added by JDR 01/2017
+
+	// RLB 2017/05/17: this function now opens up the Ph0AndMag window after it finishes
+
+	DoWindow/F TableOf2DWaveOfPh0AndMag	//Bring the table window to the front (so we don't make a million copies)
+	If (V_flag<1)			//Build Window if it doesn't already exist
+		Execute "TableOf2DWaveOfPh0AndMag()"
+	endif
+
+	DoWindow/F SaveThisData		//Bring the window to the front (so we don't make a million copies)
+
 
 End
 
@@ -460,10 +483,13 @@ End
 
 
 
-Proc Open_File_source(ctrlName): ButtonControl
+Function Open_File_source(ctrlName): ButtonControl
 	String ctrlName
+
+	NVAR usecursors
+
 	SetDataFolder root:  // In case other macros do something funny
-	PauseUpdate
+	//PauseUpdate
 
 	CheckBox realcheckbox, value = 1
 	CheckBox imagcheckbox, value = 1
@@ -472,7 +498,8 @@ Proc Open_File_source(ctrlName): ButtonControl
 	String/G source_dir, source_file
 	Variable/G source_numpnts, source_numpnts3D, source_nscans, source_SW, source_acqtime, source_fref=0 // source_numpnts3D added by JDR 01/2017
 	Variable ij,jk=-1
-	Open/D/R/C="????"/T="????"/M=("Select file...") ij	 // Let user pick file....
+	// dialog opens to home path of pxp by default
+	Open/P=home/D/R/C="????"/T="????"/M=("Select file...") ij	 // Let user pick file....
 	String/G savefilename = S_fileName
 
 	Variable ipntnum=0, iAtEndOfFirstZeroBurst=Nan, InZeroBool=0  //use below to find and report the end of the first Zero point burst, to determine Acq and the Ph0 point
@@ -531,6 +558,10 @@ Proc Open_File_source(ctrlName): ButtonControl
 		source_wave_real[0,(source_numpnts - 1)] = source_wave_realmaster(x)
 		source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x)
 
+		// "mag wave x scaling" fix: remake magnitude wave here, with correct scaling (and correct y data)
+		Duplicate /O source_wave_real, source_wave_mag
+		source_wave_mag = Sqrt(source_wave_real^2 + source_wave_imag^2)
+
 		AppendToGraph source_wave_real
 		AppendToGraph source_wave_imag
 		ModifyGraph rgb(source_wave_imag)=(0,52224,0)
@@ -544,39 +575,44 @@ Proc Open_File_source(ctrlName): ButtonControl
 		Label bottom "\\u#2Time (\\U)"
 	endif
 
-	//Now that source_wave_real & source_wave_imag for first slice are loaded, step through them from left to find the end of the first Zero burst
-
-	ipntnum=0
-	iAtEndOfFirstZeroBurst=Nan
-	InZeroBool=0  //starting from p=0, so not in Zero at beginning
-	Do
-		if ((Abs(source_wave_real[ipntnum])<1e-9)&&(Abs(source_wave_imag[ipntnum])<1e-9))
-			InZeroBool=1
-			iAtEndOfFirstZeroBurst=ipntnum //use this to hold the current Zero value
-		endif
-		//debugging...worked...no longer needed//Print "ipntnum=", ipntnum,  "Re=", Abs(source_wave_real[ipntnum]), "Im=", Abs(source_wave_imag[ipntnum]), "InZeroBool=", InZeroBool
-		ipntnum+=1
-	While ((((Abs(source_wave_real[ipntnum])<1e-9)&&(Abs(source_wave_imag[ipntnum])<1e-9)) || (InZeroBool==0)) && (ipntnum<source_numpnts))
-
-	if (ipntnum == source_numpnts)
-		iAtEndOfFirstZeroBurst = ipntnum
-	endif
-
-	Variable/G Acq=(iAtEndOfFirstZeroBurst+1), PntToSetPh0=(Acq/2-1)
+	// RLB 2017-06-06: disabling this feature, setting the default PntToSetPh0 to point 1 (second point)
+//	//Now that source_wave_real & source_wave_imag for first slice are loaded, step through them from left to find the end of the first Zero burst
+//
+//	ipntnum=0
+//	iAtEndOfFirstZeroBurst=Nan
+//	InZeroBool=0  //starting from p=0, so not in Zero at beginning
+//	Do
+//		if ((Abs(source_wave_real[ipntnum])<1e-9)&&(Abs(source_wave_imag[ipntnum])<1e-9))
+//			InZeroBool=1
+//			iAtEndOfFirstZeroBurst=ipntnum //use this to hold the current Zero value
+//			break
+//		endif
+//		ipntnum+=1
+//	While (ipntnum<source_numpnts)
+//
+//	if (ipntnum == source_numpnts)
+//		iAtEndOfFirstZeroBurst = ipntnum
+//	endif
+//
+//	Variable/G Acq=iAtEndOfFirstZeroBurst, PntToSetPh0=floor(Acq/2)
+//	if(Acq == source_numpnts)
+//		PntToSetPh0 = 1 // if only 1 acq block, put PntToSetPh0 at the second point by default
+//	endif
+	Variable/G Acq=source_numpnts, PntToSetPh0=1
 
 	if (exists(source_file[0,15]+" Ph0"))
-	Duplicate/O $(source_file[0,15]+" Ph0"), Ph0of2Dtnt
-	Duplicate/O $(source_file[0,15]+" Mag"), Magof2Dtnt
-	Print "Previous phase and magnitude was imported for this file."
+		Duplicate/O $(source_file[0,15]+" Ph0"), Ph0of2Dtnt
+		Duplicate/O $(source_file[0,15]+" Mag"), Magof2Dtnt
+		Print "Previous phase and magnitude was imported for this file."
 	else
-	Make/O/N=(filenumber*source_numpnts3D) Ph0of2Dtnt=Nan  //this global wave will be recreated, and filled with Nan, each time a new *.tnt is opened. Added *source_numpnts3D, JDR 01/2017
-	SetScale/P x 1,1,"", Ph0of2Dtnt  //the x-scaling will correspond to the fileselect variable (i.e., starts at 1)
+		Make/O/N=(filenumber*source_numpnts3D) Ph0of2Dtnt=Nan  //this global wave will be recreated, and filled with Nan, each time a new *.tnt is opened. Added *source_numpnts3D, JDR 01/2017
+		SetScale/P x 1,1,"", Ph0of2Dtnt  //the x-scaling will correspond to the fileselect variable (i.e., starts at 1)
 
-	Make/O/N=(filenumber*source_numpnts3D) Magof2Dtnt=Nan  //  Added *source_numpnts3D, JDR 01/2017
-	SetScale/P x 1,1,"", Magof2Dtnt
+		Make/O/N=(filenumber*source_numpnts3D) Magof2Dtnt=Nan  //  Added *source_numpnts3D, JDR 01/2017
+		SetScale/P x 1,1,"", Magof2Dtnt
 	endif
 
-	ResumeUpdate
+	//ResumeUpdate
 	if(usecursors == 1)
 		GetAxis/Q bottom; Cursor A, source_wave_real, V_min; Cursor B, source_wave_real, V_max;
 	endif
@@ -585,10 +621,16 @@ End
 
 
 
-Proc UpOne(ctrlName): ButtonControl
+Function UpOne(ctrlName): ButtonControl
 	String ctrlName
+
+	NVAR Fileselect, filenumber, Fileselect3D, notphased
+	NVAR source_numpnts, masterstepsize, source_numpnts3D
+	Wave source_wave_real, source_wave_imag
+	Wave source_wave_realmaster, source_wave_imagmaster
+
 	SetDataFolder root:  // In case other macros do something funny
-	PauseUpdate
+	//PauseUpdate
 
 	CheckBox realcheckbox, value = 1
 	CheckBox imagcheckbox, value = 1
@@ -598,39 +640,45 @@ Proc UpOne(ctrlName): ButtonControl
 	if(fileselect !=filenumber)
 
 
-	//This record hasn't been phased yet
-	notphased=1
+		//This record hasn't been phased yet
+		notphased=1
 
-	fileselect = fileselect + 1
-	SetFormula source_wave_real, ""
-	SetFormula source_wave_imag, ""
-	Redimension/N = (source_numpnts) source_wave_real
-	Redimension/N = (source_numpnts) source_wave_imag
-	source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // fileselect3d added by JDR 01/2017
-	source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(fileselect- 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // added by JDR 01/2017
-//	RemoveFromGraph/z source_wave_mag
+		fileselect = fileselect + 1
+		SetFormula source_wave_real, ""
+		SetFormula source_wave_imag, ""
+		Redimension/N = (source_numpnts) source_wave_real
+		Redimension/N = (source_numpnts) source_wave_imag
+		source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // fileselect3d added by JDR 01/2017
+		source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(fileselect- 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // added by JDR 01/2017
+	//	RemoveFromGraph/z source_wave_mag
 
 	else //we were at the last one (i.e., (fileselect ==filenumber)...go back to first record)
 
-	//This record hasn't been phased yet
-	notphased=1
-	fileselect = + 1  //wrap back to 1 effect
-	SetFormula source_wave_real, ""
-	SetFormula source_wave_imag, ""
-	Redimension/N = (source_numpnts) source_wave_real
-	Redimension/N = (source_numpnts) source_wave_imag
-	source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // fileselect3d added by JDR 01/2017
-	source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(fileselect- 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // fileselect3d added by JDR 01/2017
-//	RemoveFromGraph/z source_wave_mag
+		//This record hasn't been phased yet
+		notphased=1
+		fileselect = + 1  //wrap back to 1 effect
+		SetFormula source_wave_real, ""
+		SetFormula source_wave_imag, ""
+		Redimension/N = (source_numpnts) source_wave_real
+		Redimension/N = (source_numpnts) source_wave_imag
+		source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // fileselect3d added by JDR 01/2017
+		source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(fileselect- 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // fileselect3d added by JDR 01/2017
+	//	RemoveFromGraph/z source_wave_mag
 
 	endif
 End
 
 
-Proc DownOne(ctrlName): ButtonControl
+Function DownOne(ctrlName): ButtonControl
 	String ctrlName
+
+	NVAR Fileselect, filenumber, Fileselect3D, notphased
+	NVAR source_numpnts, masterstepsize, source_numpnts3D
+	Wave source_wave_real, source_wave_imag
+	Wave source_wave_realmaster, source_wave_imagmaster
+
 	SetDataFolder root:  // In case other macros do something funny
-	PauseUpdate
+	//PauseUpdate
 
 	CheckBox realcheckbox, value = 1
 	CheckBox imagcheckbox, value = 1
@@ -639,29 +687,29 @@ Proc DownOne(ctrlName): ButtonControl
 	if(fileselect !=1)
 
 
-	//This record hasn't been phased yet
-	notphased=1
+		//This record hasn't been phased yet
+		notphased=1
 
-	fileselect = fileselect - 1
-	SetFormula source_wave_real, ""
-	SetFormula source_wave_imag, ""
-	Redimension/N = (source_numpnts) source_wave_real
-	Redimension/N = (source_numpnts) source_wave_imag
-	source_wave_real[0,(source_numpnts- 1)] = source_wave_realmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // fileselect3d  added by JDR 01/2017
-	source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)// fileselect3d  added by JDR 01/2017
-//	RemoveFromGraph/z source_wave_mag
+		fileselect = fileselect - 1
+		SetFormula source_wave_real, ""
+		SetFormula source_wave_imag, ""
+		Redimension/N = (source_numpnts) source_wave_real
+		Redimension/N = (source_numpnts) source_wave_imag
+		source_wave_real[0,(source_numpnts- 1)] = source_wave_realmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // fileselect3d  added by JDR 01/2017
+		source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)// fileselect3d  added by JDR 01/2017
+	//	RemoveFromGraph/z source_wave_mag
 	else //we went down from #1...wrap around to the end!
 
-	//This record hasn't been phased yet
-	notphased=1
-	fileselect = filenumber  //wrap back to last one (filenumber) effect
-	SetFormula source_wave_real, ""
-	SetFormula source_wave_imag, ""
-	Redimension/N = (source_numpnts) source_wave_real
-	Redimension/N = (source_numpnts) source_wave_imag
-	source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // fileselect3d  added by JDR 01/2017
-	source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(fileselect- 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // fileselect3d  added by JDR 01/2017
-//	RemoveFromGraph/z source_wave_mag
+		//This record hasn't been phased yet
+		notphased=1
+		fileselect = filenumber  //wrap back to last one (filenumber) effect
+		SetFormula source_wave_real, ""
+		SetFormula source_wave_imag, ""
+		Redimension/N = (source_numpnts) source_wave_real
+		Redimension/N = (source_numpnts) source_wave_imag
+		source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // fileselect3d  added by JDR 01/2017
+		source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(fileselect- 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber) // fileselect3d  added by JDR 01/2017
+	//	RemoveFromGraph/z source_wave_mag
 
 	endif
 End
@@ -670,10 +718,16 @@ End
 // --
 // UpOne for 3D, added by JDR 01/2017
 // --
-Proc UpOne3D(ctrlName): ButtonControl
+Function UpOne3D(ctrlName): ButtonControl
 	String ctrlName
+
+	NVAR Fileselect, filenumber, Fileselect3D, notphased
+	NVAR source_numpnts, masterstepsize, source_numpnts3D
+	Wave source_wave_real, source_wave_imag
+	Wave source_wave_realmaster, source_wave_imagmaster
+
 	SetDataFolder root:  // In case other macros do something funny
-	PauseUpdate
+	//PauseUpdate
 
 	CheckBox realcheckbox, value = 1
 	CheckBox imagcheckbox, value = 1
@@ -682,29 +736,29 @@ Proc UpOne3D(ctrlName): ButtonControl
 	if(fileselect3D != source_numpnts3D)
 
 
-	//This record hasn't been phased yet
-	notphased=1
+		//This record hasn't been phased yet
+		notphased=1
 
-	fileselect3D = fileselect3D + 1
-	SetFormula source_wave_real, ""
-	SetFormula source_wave_imag, ""
-	Redimension/N = (source_numpnts) source_wave_real
-	Redimension/N = (source_numpnts) source_wave_imag
-	source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)
-	source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(fileselect- 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)
-//	RemoveFromGraph/z source_wave_mag
+		fileselect3D = fileselect3D + 1
+		SetFormula source_wave_real, ""
+		SetFormula source_wave_imag, ""
+		Redimension/N = (source_numpnts) source_wave_real
+		Redimension/N = (source_numpnts) source_wave_imag
+		source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)
+		source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(fileselect- 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)
+	//	RemoveFromGraph/z source_wave_mag
 	else //we were at the last one (i.e., (fileselect ==filenumber)...go back to first record)
 
-	//This record hasn't been phased yet
-	notphased=1
-	fileselect3d = + 1  //wrap back to 1 effect
-	SetFormula source_wave_real, ""
-	SetFormula source_wave_imag, ""
-	Redimension/N = (source_numpnts) source_wave_real
-	Redimension/N = (source_numpnts) source_wave_imag
-	source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(fileselect - 1)*(fileselect3d)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)
-	source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(fileselect- 1)*(fileselect3d)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)
-//	RemoveFromGraph/z source_wave_mag
+		//This record hasn't been phased yet
+		notphased=1
+		fileselect3d = + 1  //wrap back to 1 effect
+		SetFormula source_wave_real, ""
+		SetFormula source_wave_imag, ""
+		Redimension/N = (source_numpnts) source_wave_real
+		Redimension/N = (source_numpnts) source_wave_imag
+		source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(fileselect - 1)*(fileselect3d)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)
+		source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(fileselect- 1)*(fileselect3d)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)
+	//	RemoveFromGraph/z source_wave_mag
 
 	endif
 End
@@ -712,10 +766,16 @@ End
 // --
 // DownOne for 3D, added by JDR 01/2017
 // --
-Proc DownOne3D(ctrlName): ButtonControl
+Function DownOne3D(ctrlName): ButtonControl
 	String ctrlName
+
+	NVAR Fileselect, filenumber, Fileselect3D, notphased
+	NVAR source_numpnts, masterstepsize, source_numpnts3D
+	Wave source_wave_real, source_wave_imag
+	Wave source_wave_realmaster, source_wave_imagmaster
+
 	SetDataFolder root:  // In case other macros do something funny
-	PauseUpdate
+	//PauseUpdate
 
 	CheckBox realcheckbox, value = 1
 	CheckBox imagcheckbox, value = 1
@@ -724,29 +784,29 @@ Proc DownOne3D(ctrlName): ButtonControl
 	if(fileselect3d !=1)
 
 
-	//This record hasn't been phased yet
-	notphased=1
+		//This record hasn't been phased yet
+		notphased=1
 
-	fileselect3d = fileselect3d - 1
-	SetFormula source_wave_real, ""
-	SetFormula source_wave_imag, ""
-	Redimension/N = (source_numpnts) source_wave_real
-	Redimension/N = (source_numpnts) source_wave_imag
-	source_wave_real[0,(source_numpnts- 1)] = source_wave_realmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)
-	source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)
-//	RemoveFromGraph/z source_wave_mag
+		fileselect3d = fileselect3d - 1
+		SetFormula source_wave_real, ""
+		SetFormula source_wave_imag, ""
+		Redimension/N = (source_numpnts) source_wave_real
+		Redimension/N = (source_numpnts) source_wave_imag
+		source_wave_real[0,(source_numpnts- 1)] = source_wave_realmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)
+		source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)
+	//	RemoveFromGraph/z source_wave_mag
 	else //we went down from #1...wrap around to the end!
 
-	//This record hasn't been phased yet
-	notphased=1
-	fileselect3d = source_numpnts3D  //wrap back to last one (source_numpnts3D) effect
-	SetFormula source_wave_real, ""
-	SetFormula source_wave_imag, ""
-	Redimension/N = (source_numpnts) source_wave_real
-	Redimension/N = (source_numpnts) source_wave_imag
-	source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)
-	source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(fileselect- 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)
-//	RemoveFromGraph/z source_wave_mag
+		//This record hasn't been phased yet
+		notphased=1
+		fileselect3d = source_numpnts3D  //wrap back to last one (source_numpnts3D) effect
+		SetFormula source_wave_real, ""
+		SetFormula source_wave_imag, ""
+		Redimension/N = (source_numpnts) source_wave_real
+		Redimension/N = (source_numpnts) source_wave_imag
+		source_wave_real[0,(source_numpnts -1)] = source_wave_realmaster(x + masterstepsize*(fileselect - 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)
+		source_wave_imag[0,(source_numpnts - 1)] = source_wave_imagmaster(x + masterstepsize*(fileselect- 1)*source_numpnts + masterstepsize*(fileselect3D-1)*source_numpnts*filenumber)
+	//	RemoveFromGraph/z source_wave_mag
 
 	endif
 End
@@ -781,53 +841,55 @@ Window SaveThisData() : Graph
 	Button button2,pos={87,54},size={249,20},proc=Save_Waves_source,title="Export Checked of 1D Slice Wave[\\{fileselect}]"
 	Button button7,pos={765,7},size={121,60},proc=Bulk_2D_Ph0_Save_Waves_source,title="Export Full Re&Im\rwith Ph0[*]\rFor ALL \\{filenumber} Slices"
 	Button button8,pos={649,7},size={109,62},proc=Bulk_2D_AUTO_FIND_Ph0,title="Auto Set Ph0[*]\r For ALL \\{filenumber}\rSlices (Atan2)"
-	Button button3,pos={892,8},size={60,59},proc=Close_Window,title="Close\rWindow"
+	Button button3,pos={892,8},size={96,41},proc=Close_Window,title="Close\rWindow"
 	Button button4,pos={247,4},size={70,42},proc=PhaseCtrl,title="Adjust\rPh0[\\{fileselect}]"
 	Button button5,pos={124,5},size={21,44},proc=UpOne,title="+"
 	Button button6,pos={93,5},size={21,44},proc=DownOne,title="-"
-	Button button9,pos={1000,28},size={21,44},proc=UpOne3D,title="+" // added by JDR 01/2017
-	Button button10,pos={969,28},size={21,44},proc=DownOne3D,title="-" // added by JDR 01/2017
+	Button button9,pos={1036,28},size={21,44},proc=UpOne3D,title="+" // added by JDR 01/2017
+	Button button10,pos={1005,28},size={21,44},proc=DownOne3D,title="-" // added by JDR 01/2017
 	ValDisplay valdisp2,pos={411,5},size={147,17},bodyWidth=62,title="Phase0 (rads)"
 	ValDisplay valdisp2,fSize=12,frame=0,limits={0,0,0},barmisc={0,1000}
 	ValDisplay valdisp2,value= #"phase0"
 	CheckBox realcheckbox,pos={3,75},size={34,14},proc=realar,title="real",value= 1
 	CheckBox imagcheckbox,pos={3,95},size={39,14},proc=imagar,title="imag",value= 1
 	CheckBox magcheckbox,pos={3,115},size={37,14},proc=magar,title="mag",value= 1
-	PopupMenu FFTwave,pos={969,8},size={149,20},proc=PopupFFT,title="FFT[\\{fileselect}]"
+	PopupMenu FFTwave,pos={1005,8},size={149,20},proc=PopupFFT,title="FFT[\\{fileselect}]"
 	PopupMenu FFTwave,mode=1,popvalue="No Apodization",value= #"\"No GB/LB;Gaussian;Exponential\""
-	SetVariable setvar0,pos={4,54},size={81,15},bodyWidth=36,title="Scans 1D"
-	SetVariable setvar0,value= source_nscans
+	ValDisplay valdisp5,pos={4,54},size={81,15},bodyWidth=36,title="Scans 1D"
+	ValDisplay valdisp5,value= #"source_nscans"
 	ValDisplay valdisp0,pos={155,9},size={90,14},title="Select File #"
 	ValDisplay valdisp0,limits={0,0,0},barmisc={0,1000},value= #"fileselect"
 	ValDisplay valdisp1,pos={160,29},size={85,14},title="Total Files"
 	ValDisplay valdisp1,limits={0,0,0},barmisc={0,1000},value= #"filenumber"
 
-	ValDisplay valdisp3,pos={1031,31},size={90,14},title="Select File #"
+	ValDisplay valdisp3,pos={1067,31},size={90,14},title="Select File #"
 	ValDisplay valdisp3,limits={0,0,0},barmisc={0,1000},value= #"fileselect3D"
-	ValDisplay valdisp4,pos={1036,48},size={85,14},title="Total 3D\rFiles"
+	ValDisplay valdisp4,pos={1072,48},size={85,14},title="Total 3D\rFiles"
 	ValDisplay valdisp4,limits={0,0,0},barmisc={0,1000},value= #"source_numpnts3D"
+	CheckBox graphcheckbox,pos={892,53},size={75,15},title="Live Update",fSize=10
+	CheckBox graphcheckbox,value= 1, proc=LiveUpdateControl
 EndMacro
 
 
 Window TableOf2DWaveOfPh0AndMag() : Table
 	PauseUpdate; Silent 1		// building window...
-	Edit/W=(1209,97,1436,912) Ph0of2Dtnt.xy,Magof2Dtnt.y as "Recorded Values of Ph0 AND Mag in 2D set"
+	Edit/K=1/W=(1053,45,1280,795) Ph0of2Dtnt.xy,Magof2Dtnt.y as "Recorded Values of Ph0 AND Mag in 2D set"
 	ModifyTable format(Point)=1,width(Point)=22,width(Magof2Dtnt.y)=72,width(Ph0of2Dtnt.x)=42
 	ModifyTable width(Ph0of2Dtnt.d)=72
 EndMacro
 
 
-Window TableOf2DWaveOfPh0() : Table
-	PauseUpdate; Silent 1		// building window...
-	Edit/W=(1309,97,1602,765) Ph0of2Dtnt.xy as "Recorded Values of Ph0 in 2D set"
-	ModifyTable format(Point)=1,width(Point)=42,width(Ph0of2Dtnt.d)=78
-EndMacro
-
-Window TableOf2DWaveOfMag() : Table
-	PauseUpdate; Silent 1		// building window...
-	Edit/W=(1309,97,1602,765) Magof2Dtnt.xy as "Recorded Values of Magnitude in 2D set"
-	ModifyTable format(Point)=1,width(Point)=42,width(Magof2Dtnt.d)=78
-EndMacro
+//Window TableOf2DWaveOfPh0() : Table
+//	PauseUpdate; Silent 1		// building window...
+//	Edit/W=(1309,97,1602,765) Ph0of2Dtnt.xy as "Recorded Values of Ph0 in 2D set"
+//	ModifyTable format(Point)=1,width(Point)=42,width(Ph0of2Dtnt.d)=78
+//EndMacro
+//
+//Window TableOf2DWaveOfMag() : Table
+//	PauseUpdate; Silent 1		// building window...
+//	Edit/W=(1309,97,1602,765) Magof2Dtnt.xy as "Recorded Values of Magnitude in 2D set"
+//	ModifyTable format(Point)=1,width(Point)=42,width(Magof2Dtnt.d)=78
+//EndMacro
 
 
 Function Realar(ctrlName,checked) : CheckBoxControl		//This function will add/remove the real FID from the graph
@@ -872,6 +934,25 @@ Function Magar(ctrlName,checked) : CheckBoxControl		//This function will add/rem
 
 End
 
+// added by RLB 2017/05/17 to enable and disable live update for automatic functions (find phase, export data)
+Function LiveUpdateControl(cba) : CheckBoxControl
+	STRUCT WMCheckboxAction &cba
+
+	NVAR gLiveUpdate
+	switch( cba.eventCode )
+		case 2: // mouse up
+			Variable checked = cba.checked
+
+			gLiveUpdate = checked
+
+			break
+		case -1: // control being killed
+			break
+	endswitch
+
+	return 0
+End
+
 
 
 Macro PhaseAndSaveBulkV7()
@@ -884,7 +965,7 @@ Macro PhaseAndSaveBulkV7()
 		SaveThisData()
 		DoWindow/T SaveThisData, "No Data File Loaded--Use Import"
 	endif
-	Variable/G phase0, notphased=1, usecursors = 0, zerofillbool = 0
+	Variable/G phase0, notphased=1, usecursors = 0, zerofillbool = 0, gLiveUpdate = 1
 
 End
 
@@ -896,12 +977,12 @@ End
 
 Window FFTGraph() : Graph																					////This is the FFT window
 	PauseUpdate; Silent 1		// building window...
-	Execute "Display /W=(37.5,79.25,678,516.5)  ftsource_wave_real,ftsource_wave_imag,ftsource_wave_mag"
+	Display /W=(38,79,768,517)  ftsource_wave_real,ftsource_wave_imag,ftsource_wave_mag
 	ModifyGraph lSize=1
 	ModifyGraph grid=1
 	ModifyGraph gridRGB=(56576,56576,56576)
-	Execute "ModifyGraph rgb(ftsource_wave_imag)=(0,52224,0)"
-	Execute "ModifyGraph rgb(ftsource_wave_mag)=(0,0,65280)"
+	ModifyGraph rgb(ftsource_wave_imag)=(0,52224,0)
+	ModifyGraph rgb(ftsource_wave_mag)=(0,0,65280)
 	ControlBar 50
 	SetVariable cphase,pos={49,24},size={65,19},title="Coarse",fSize=12,frame=0									//fine and course phase adjustments
 	SetVariable cphase,limits={-Inf,Inf,0.05},value=coursepFT
@@ -912,7 +993,7 @@ Window FFTGraph() : Graph																					////This is the FFT window
 	SetDrawLayer UserFront																					//phase correction given by 2*pi*v*t (v is the frequency) is added
 	ValDisplay valdisp2,pos={049,5},size={125,15},title="Phase Angle"
 	ValDisplay valdisp2,limits={0,0,0},barmisc={0,1000},value= phaseFFT											//This is the phase angle display
-	ValDisplay valdisp3,pos={200,5},size={127,15}, title="Phase One Correction (us)", frame = 0
+	ValDisplay valdisp3,pos={200,5},size={127,15},bodyWidth=1, title="Phase One Correction (us)", frame = 0
 	ValDisplay valdisp3,limits={0,0,0},barmisc={0,1000}, value = 0													//This is not actually a display, it is just used as a label for the phase one setvariable
 	ValDisplay valdisp4, pos={625,5}, size={94,15}, title = "File #"
 	ValDisplay valdisp4, limits={0,0,0}, barmisc={0,1000}, value= ftfileselect
@@ -932,54 +1013,59 @@ Window FFTGraph() : Graph																					////This is the FFT window
 End
 
 
-Proc Close_ftWindow(ctrlName): ButtonControl																	//This just closes the	procedure which closes FFTGraph
+Function Close_ftWindow(ctrlName): ButtonControl																	//This just closes the	procedure which closes FFTGraph
 	String ctrlName
 	DoWindow/K FFTGraph
 	KillWaves/Z ftsource_wave_real, ftsource_wave_imag, ftsource_wave_mag
 End
 
 
-Proc ExportFTWaves(ctrlName): ButtonControl   //This procedure just exports the FFT data, exactly the same way as is done in Dale's original phase and save
+Function ExportFTWaves(ctrlName): ButtonControl   //This procedure just exports the FFT data, exactly the same way as is done in Dale's original phase and save
 	String ctrlName
+
+	SVAR source_file
+	NVAR filenumber, ftfileselect
 
 	SetDataFolder root:  // In case other macros do something funny
 	if(filenumber == 1)
-	String ftfnamereal = source_file[0,15]+"ftreal", ftfnameimag=source_file[0,15]+"ftimag", ftfnamemag=source_file[0,15]+"ftmagnitude"
+		String ftfnamereal = source_file[0,15]+"ftreal"
+		String ftfnameimag=source_file[0,15]+"ftimag"
+		String ftfnamemag=source_file[0,15]+"ftmagnitude"
 
-	GetAxis/Q bottom
-	Cursor A, ftsource_wave_real, V_min; Cursor B, ftsource_wave_real, V_max;
+		GetAxis/Q bottom
+		Cursor A, ftsource_wave_real, V_min; Cursor B, ftsource_wave_real, V_max;
 
-	Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) ftsource_wave_real, '" + ftfnamereal+"'"
-	Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) ftsource_wave_imag, '" + ftfnameimag+"'"
-	Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) ftsource_wave_mag, '" + ftfnamemag+"'"
+		Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) ftsource_wave_real, '" + ftfnamereal+"'"
+		Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) ftsource_wave_imag, '" + ftfnameimag+"'"
+		Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) ftsource_wave_mag, '" + ftfnamemag+"'"
 
-	Execute "'"+ftfnamereal+"'=ftsource_wave_real(x)"
-	Execute "'"+ftfnameimag+"'=ftsource_wave_imag(x)"
-	Execute "'"+ftfnamemag+"'=ftsource_wave_mag(x)"
+		Execute "'"+ftfnamereal+"'=ftsource_wave_real(x)"
+		Execute "'"+ftfnameimag+"'=ftsource_wave_imag(x)"
+		Execute "'"+ftfnamemag+"'=ftsource_wave_mag(x)"
 
-	print "Wave '"+ftfnamereal+"' was generated in  root."
-	print "Wave '"+ftfnameimag+"' was generated in  root."
-	print  "Wave '"+ftfnamemag+"' was generated in  root."
+		print "Wave '"+ftfnamereal+"' was generated in  root."
+		print "Wave '"+ftfnameimag+"' was generated in  root."
+		print  "Wave '"+ftfnamemag+"' was generated in  root."
 	else
 
-	String  ftfnamereal = source_file[0,15]+" ftreal[" + Num2str(ftfileselect) + "]"
-	String  ftfnameimag=source_file[0,15]+" ftimag[" + Num2str(ftfileselect) + "]"
-	String  ftfnamemag=source_file[0,15]+" ftmag[" + Num2str(ftfileselect) + "]"
+		ftfnamereal = source_file[0,15]+" ftreal[" + Num2str(ftfileselect) + "]"
+		ftfnameimag=source_file[0,15]+" ftimag[" + Num2str(ftfileselect) + "]"
+		ftfnamemag=source_file[0,15]+" ftmag[" + Num2str(ftfileselect) + "]"
 
-	GetAxis/Q bottom
-	Cursor A, ftsource_wave_real, V_min; Cursor B, ftsource_wave_real, V_max;
+		GetAxis/Q bottom
+		Cursor A, ftsource_wave_real, V_min; Cursor B, ftsource_wave_real, V_max;
 
-	Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) ftsource_wave_real, '" + ftfnamereal+"'"
-	Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) ftsource_wave_imag, '" + ftfnameimag+"'"
-	Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) ftsource_wave_mag, '" + ftfnamemag+"'"
+		Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) ftsource_wave_real, '" + ftfnamereal+"'"
+		Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) ftsource_wave_imag, '" + ftfnameimag+"'"
+		Execute "Duplicate/O/R=(xcsr(A),xcsr(B)) ftsource_wave_mag, '" + ftfnamemag+"'"
 
-	Execute "'"+ftfnamereal+"'=ftsource_wave_real(x)"
-	Execute "'"+ftfnameimag+"'=ftsource_wave_imag(x)"
-	Execute "'"+ftfnamemag+"'=ftsource_wave_mag(x)"
+		Execute "'"+ftfnamereal+"'=ftsource_wave_real(x)"
+		Execute "'"+ftfnameimag+"'=ftsource_wave_imag(x)"
+		Execute "'"+ftfnamemag+"'=ftsource_wave_mag(x)"
 
-	print "Wave '"+ftfnamereal+"' was generated in  root."
-	print "Wave '"+ftfnameimag+"' was generated in  root."
-	print  "Wave '"+ftfnamemag+"' was generated in  root."
+		print "Wave '"+ftfnamereal+"' was generated in  root."
+		print "Wave '"+ftfnameimag+"' was generated in  root."
+		print  "Wave '"+ftfnamemag+"' was generated in  root."
 
 	endif
 End
@@ -1031,10 +1117,10 @@ Function PopupFFT(ctrlName,popNum,popStr) : PopupMenuControl												//This f
 		Execute "FourierTransform()"
 	endif
 	If (popNum==2)
-		Execute "GaussApodFourierTransform()"
+		Execute "GaussApodFourierTransform(1)"	// default apod 1 Hz
 	endif
 	If (popNum==3)
-		Execute "ExpApodFourierTransform()"
+		Execute "ExpApodFourierTransform(1)"		// default apod 1 Hz
 	endif
 End
 
@@ -1062,8 +1148,10 @@ End
 
 /////BEGIN PROCEDURES WHICH DO THE FOURIER TRANSFORMING
 
-Proc FourierTransform()																	//This is a straightforward FFT, with no apodization
+Function FourierTransform()																	//This is a straightforward FFT, with no apodization
 	SetDataFolder root:  // In case other macros do something funny
+
+	NVAR fileselect, zerofillbool, usecursors
 
 	variable/G ftfileselect = fileselect													//label the 2d file you are looking at
 	variable checka																		//we check first whether or not the two cursors are on the screen
@@ -1120,7 +1208,7 @@ Proc FourierTransform()																	//This is a straightforward FFT, with no
 		InsertPoints (temptotalsteps),(tempsteps), ftsource_wave_mag
 	endif
 
-	duplicate/o ftsource_wave_real, trial1
+	duplicate/O ftsource_wave_real, trial1
 
 	if(usecursors == 0)
 		GetAxis/Q bottom
@@ -1133,7 +1221,7 @@ Proc FourierTransform()																	//This is a straightforward FFT, with no
 	step = deltax(ftsource_wave_real)
 	start = leftx(ftsource_wave_real)
 
-	make/o/C ftsource_wave_cmplx												//make a complex wave with the same dimensions and make it the complex signal
+	make/O/C ftsource_wave_cmplx												//make a complex wave with the same dimensions and make it the complex signal
 	Redimension/N = (points) ftsource_wave_cmplx									// wave
 	SetScale/P x (start),(step),"s", ftsource_wave_cmplx
 
@@ -1166,29 +1254,33 @@ Proc FourierTransform()																	//This is a straightforward FFT, with no
 	phaseone = 0																		//initialize the phase one corrections to zero
 	phaseoneus = 0
 
-	duplicate/o ftsource_wave_mag, phaseonewave									//make a wave whose entries are 2*pi*v where v is the frequency independent variableof the FFT
+	Duplicate/O ftsource_wave_mag, phaseonewave									//make a wave whose entries are 2*pi*v where v is the frequency independent variableof the FFT
 	phaseonewave = 2*pi*x
 
 	finepft=0																				//initialize the phase corrections to zero
 	coursepft=0
 
-	phaseone := (10^-6)*phaseoneus												//the phase one is set in terms of the phaseoneus which is set by the user
-	phaseFFT := finepft + coursepft												// the phase is set as the sum of the course and fine phase adjustments
+	SetFormula phaseone, "(10^-6)*phaseoneus"											//the phase one is set in terms of the phaseoneus which is set by the user
+	SetFormula phaseFFT, "finepft + coursepft"												// the phase is set as the sum of the course and fine phase adjustments
 
-	ftsource_wave_real:= (real(ftsource_wave_cmplx)*cos(phaseFFT - phaseonewave*phaseone) + imag(ftsource_wave_cmplx)*sin(phaseFFT - phaseonewave*phaseone))
-	ftsource_wave_imag := (imag(ftsource_wave_cmplx)*cos(phaseFFT - phaseonewave*phaseone) - real(ftsource_wave_cmplx)*sin(phaseFFT - phaseonewave*phaseone))
+	SetFormula ftsource_wave_real, "(real(ftsource_wave_cmplx)*cos(phaseFFT - phaseonewave*phaseone) + imag(ftsource_wave_cmplx)*sin(phaseFFT - phaseonewave*phaseone))"
+	SetFormula ftsource_wave_imag, "(imag(ftsource_wave_cmplx)*cos(phaseFFT - phaseonewave*phaseone) - real(ftsource_wave_cmplx)*sin(phaseFFT - phaseonewave*phaseone))"
 																						//set the real and imaginary FFT in terms of the complex FFT with the given
 																						//phase and phase one (2*pi*v*(offset time)) correction
 	BuildFTGraph() 																		//Build the FFT graph
 End
 
 
-Proc GaussApodFourierTransform(apod)															//This an FFT, with gaussian apodization
-	variable/G ftfileselect = fileselect
+Function GaussApodFourierTransform(apod)															//This an FFT, with gaussian apodization
 	Variable apod
-	prompt apod, "Enter the Gaussian FWHM in Hz"
-	apod = ((2/pi)*(ln(2)))/apod
-	apod = 1/apod
+
+	NVAR fileselect, zerofillbool, usecursors
+	Variable/G ftfileselect = fileselect
+
+	Prompt apod, "Enter the Gaussian FWHM in Hz"
+	DoPrompt "Apodization Factor", apod
+	apod = ((2/pi)*(ln(2)))/apod	// convert from FWHM to variance, I think
+	apod = 1/apod						// convert back to Hz, I think??
 	Silent 1
 
 	variable checka																		//we check first whether or not the two cursors are on the screen
@@ -1260,7 +1352,7 @@ Proc GaussApodFourierTransform(apod)															//This an FFT, with gaussian 
 	step = deltax(ftsource_wave_real)
 	start = leftx(ftsource_wave_real)
 
-	make/o/C ftsource_wave_cmplx												//make a complex wave with the same dimensions and make it the complex signal
+	make/O/C ftsource_wave_cmplx												//make a complex wave with the same dimensions and make it the complex signal
 	Redimension/N = (points) ftsource_wave_cmplx									//wave
 	SetScale/P x (start),(step),"s", ftsource_wave_cmplx
 
@@ -1293,29 +1385,33 @@ Proc GaussApodFourierTransform(apod)															//This an FFT, with gaussian 
 	phaseone = 0																		//initialize the phase one corrections to zero
 	phaseoneus = 0
 
-	duplicate/o ftsource_wave_mag, phaseonewave									//make a wave whose entries are 2*pi*v where v is the frequency independent variableof the FFT
+	duplicate/O ftsource_wave_mag, phaseonewave									//make a wave whose entries are 2*pi*v where v is the frequency independent variableof the FFT
 	phaseonewave = 2*pi*x
 
 	finepft=0																				//initialize the phase corrections to zero
 	coursepft=0
 
-	phaseone := (10^-6)*phaseoneus												//the phase one is set in terms of the phaseoneus which is set by the user
-	phaseFFT := finepft + coursepft												// the phase is set as the sum of the course and fine phase adjustments
+	SetFormula phaseone, "(10^-6)*phaseoneus"										//the phase one is set in terms of the phaseoneus which is set by the user
+	SetFormula phaseFFT, "finepft + coursepft"										// the phase is set as the sum of the course and fine phase adjustments
 
-	ftsource_wave_real:= (real(ftsource_wave_cmplx)*cos(phaseFFT - phaseonewave*phaseone) + imag(ftsource_wave_cmplx)*sin(phaseFFT - phaseonewave*phaseone))
-	ftsource_wave_imag := (imag(ftsource_wave_cmplx)*cos(phaseFFT - phaseonewave*phaseone) - real(ftsource_wave_cmplx)*sin(phaseFFT - phaseonewave*phaseone))
+	SetFormula ftsource_wave_real, "(real(ftsource_wave_cmplx)*cos(phaseFFT - phaseonewave*phaseone) + imag(ftsource_wave_cmplx)*sin(phaseFFT - phaseonewave*phaseone))"
+	SetFormula ftsource_wave_imag, "(imag(ftsource_wave_cmplx)*cos(phaseFFT - phaseonewave*phaseone) - real(ftsource_wave_cmplx)*sin(phaseFFT - phaseonewave*phaseone))"
 																						//set the real and imaginary FFT in terms of the complex FFT with the given
 																						//phase and phase one (2*pi*v*(offset time)) correction
 	BuildFTGraph() 																//Build the FFT graph
 End
 
 
-Proc ExpApodFourierTransform(apod)
-	variable/G ftfileselect = fileselect
+Function ExpApodFourierTransform(apod)
 	Variable apod
+
+	NVAR fileselect, zerofillbool, usecursors
+	variable/G ftfileselect = fileselect
+
 	Prompt apod, "Enter the Lorentzian FWHM in Hz"
-	apod = 1/(pi*apod)
-	apod = 1/apod
+	DoPrompt "Apodization Factor", apod
+	apod = 1/(pi*apod)	// convert from FWHM to time constant
+	apod = 1/apod			// convert from time constant to rate constant
 	Silent 1
 
 	GetAxis/Q Bottom
@@ -1392,7 +1488,7 @@ Proc ExpApodFourierTransform(apod)
 	start = leftx(ftsource_wave_real)
 
 
-	make/o/C ftsource_wave_cmplx												//make a complex wave with the same dimensions and make it the complex signal
+	make/O/C ftsource_wave_cmplx												//make a complex wave with the same dimensions and make it the complex signal
 	Redimension/N = (points) ftsource_wave_cmplx								//wave
 	SetScale/P x (start),(step),"s", ftsource_wave_cmplx
 
@@ -1425,18 +1521,18 @@ Proc ExpApodFourierTransform(apod)
 	phaseone = 0																		//initialize the phase one corrections to zero
 	phaseoneus = 0
 
-	duplicate/o ftsource_wave_mag, phaseonewave									//make a wave whose entries are 2*pi*v where v is the frequency independent variableof the FFT
+	duplicate/O ftsource_wave_mag, phaseonewave									//make a wave whose entries are 2*pi*v where v is the frequency independent variableof the FFT
 	phaseonewave = 2*pi*x
 
 	finepft=0																				//initialize the phase corrections to zero
 	coursepft=0
 
-	phaseone := (10^-6)*phaseoneus												//the phase one is set in terms of the phaseoneus which is set by the user
-	phaseFFT := finepft + coursepft												// the phase is set as the sum of the course and fine phase adjustments
+	SetFormula phaseone, "(10^-6)*phaseoneus"										//the phase one is set in terms of the phaseoneus which is set by the user
+	SetFormula phaseFFT, "finepft + coursepft"										// the phase is set as the sum of the course and fine phase adjustments
 
 
-	ftsource_wave_real:= (real(ftsource_wave_cmplx)*cos(phaseFFT - phaseonewave*phaseone) + imag(ftsource_wave_cmplx)*sin(phaseFFT - phaseonewave*phaseone))
-	ftsource_wave_imag := (imag(ftsource_wave_cmplx)*cos(phaseFFT - phaseonewave*phaseone) - real(ftsource_wave_cmplx)*sin(phaseFFT - phaseonewave*phaseone))
+	SetFormula ftsource_wave_real, "(real(ftsource_wave_cmplx)*cos(phaseFFT - phaseonewave*phaseone) + imag(ftsource_wave_cmplx)*sin(phaseFFT - phaseonewave*phaseone))"
+	SetFormula ftsource_wave_imag, "(imag(ftsource_wave_cmplx)*cos(phaseFFT - phaseonewave*phaseone) - real(ftsource_wave_cmplx)*sin(phaseFFT - phaseonewave*phaseone))"
 																						//set the real and imaginary FFT in terms of the complex FFT with the given
 																						//phase and phase one (2*pi*v*(offset time)) correction
 	BuildFTGraph() 																//Build the FFT graph
@@ -1444,18 +1540,20 @@ End
 
 
 
-Proc BuildFTGraph()															//This macro just activates the FFTgraph() macro if FFTgraph isn't already open
+Function BuildFTGraph()															//This macro just activates the FFTgraph() macro if FFTgraph isn't already open
 	SetDataFolder root:  // In case other macros do something funny
 	DoWindow/F FFTGraph		//Bring the window to the front (so we don't make a million copies)
 	If (V_flag<1)			//Build Window if it doesn't already exist
-		FFTGraph()
+		Execute "FFTGraph()"
 	endif
 End
 
 
-Proc SetWithCursors(ctrlName,secchecked) : CheckBoxControl						//This is controlled by the set with cursors check box on the original phase and save graph.  It sets "usecursors",
+Function SetWithCursors(ctrlName,secchecked) : CheckBoxControl						//This is controlled by the set with cursors check box on the original phase and save graph.  It sets "usecursors",
 	String ctrlName															//which is a global variable, equal to zero if the box is unchecked and 1 if it is checked.  Also, when the box is checked
 	Variable secchecked															//cursors are added to the right and left edges of the phase and save graph fot the use to set the FFT range
+
+	NVAR usecursors, baselinebool
 
 	if (secchecked)
 		usecursors = 1
