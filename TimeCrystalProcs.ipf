@@ -1,6 +1,6 @@
 #pragma rtGlobals=1		// Use modern global access method and strict wave access.
 
-//
+//===================//
 // JDR 5/17
 // these functions were tossed together as I've been looking at the phenomenon of "time crystals" in bulk
 // substances like ammonium dihydrogen phosphate. Not much guiding principle here except to look around
