@@ -498,7 +498,8 @@ Function Open_File_source(ctrlName): ButtonControl
 	String/G source_dir, source_file
 	Variable/G source_numpnts, source_numpnts3D, source_nscans, source_SW, source_acqtime, source_fref=0 // source_numpnts3D added by JDR 01/2017
 	Variable ij,jk=-1
-	Open/D/R/C="????"/T="????"/M=("Select file...") ij	 // Let user pick file....
+	// dialog opens to home path of pxp by default
+	Open/P=home/D/R/C="????"/T="????"/M=("Select file...") ij	 // Let user pick file....
 	String/G savefilename = S_fileName
 
 	Variable ipntnum=0, iAtEndOfFirstZeroBurst=Nan, InZeroBool=0  //use below to find and report the end of the first Zero point burst, to determine Acq and the Ph0 point
@@ -574,28 +575,30 @@ Function Open_File_source(ctrlName): ButtonControl
 		Label bottom "\\u#2Time (\\U)"
 	endif
 
-	//Now that source_wave_real & source_wave_imag for first slice are loaded, step through them from left to find the end of the first Zero burst
-
-	ipntnum=0
-	iAtEndOfFirstZeroBurst=Nan
-	InZeroBool=0  //starting from p=0, so not in Zero at beginning
-	Do
-		if ((Abs(source_wave_real[ipntnum])<1e-9)&&(Abs(source_wave_imag[ipntnum])<1e-9))
-			InZeroBool=1
-			iAtEndOfFirstZeroBurst=ipntnum //use this to hold the current Zero value
-			break
-		endif
-		ipntnum+=1
-	While (ipntnum<source_numpnts)
-
-	if (ipntnum == source_numpnts)
-		iAtEndOfFirstZeroBurst = ipntnum
-	endif
-
-	Variable/G Acq=iAtEndOfFirstZeroBurst, PntToSetPh0=floor(Acq/2)
-	if(Acq == source_numpnts)
-		PntToSetPh0 = 1 // if only 1 acq block, put PntToSetPh0 at the second point by default
-	endif
+	// RLB 2017-06-06: disabling this feature, setting the default PntToSetPh0 to point 1 (second point)
+//	//Now that source_wave_real & source_wave_imag for first slice are loaded, step through them from left to find the end of the first Zero burst
+//
+//	ipntnum=0
+//	iAtEndOfFirstZeroBurst=Nan
+//	InZeroBool=0  //starting from p=0, so not in Zero at beginning
+//	Do
+//		if ((Abs(source_wave_real[ipntnum])<1e-9)&&(Abs(source_wave_imag[ipntnum])<1e-9))
+//			InZeroBool=1
+//			iAtEndOfFirstZeroBurst=ipntnum //use this to hold the current Zero value
+//			break
+//		endif
+//		ipntnum+=1
+//	While (ipntnum<source_numpnts)
+//
+//	if (ipntnum == source_numpnts)
+//		iAtEndOfFirstZeroBurst = ipntnum
+//	endif
+//
+//	Variable/G Acq=iAtEndOfFirstZeroBurst, PntToSetPh0=floor(Acq/2)
+//	if(Acq == source_numpnts)
+//		PntToSetPh0 = 1 // if only 1 acq block, put PntToSetPh0 at the second point by default
+//	endif
+	Variable/G Acq=source_numpnts, PntToSetPh0=1
 
 	if (exists(source_file[0,15]+" Ph0"))
 		Duplicate/O $(source_file[0,15]+" Ph0"), Ph0of2Dtnt
